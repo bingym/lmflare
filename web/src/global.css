@@ -22,3 +22,13 @@ body {
 .hoverable-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
 }
+
+.chat-cursor::after {
+  content: "▍";
+  animation: blink 1s steps(2) infinite;
+  color: #1677ff;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}

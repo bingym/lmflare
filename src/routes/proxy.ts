@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../types";
 import { appAuth } from "../middleware/appAuth";
-import { listAllModelsWithProvider, getProviderBySlug } from "../services/db";
+import { listAllModelsWithProvider, getEnabledProxyModel } from "../services/db";
 import { proxyToOpenAI, anthropicToOpenAI } from "../adapters/openai";
 import { proxyToAnthropic, openaiToAnthropic } from "../adapters/anthropic";
 import type { ProxyTarget } from "../adapters/base";
@@ -28,17 +28,20 @@ async function resolveTarget(
     return { error: `Invalid model format: "${modelField}". Use "provider/model" format.`, status: 400 };
   }
 
-  const provider = await getProviderBySlug(db, parsed.slug);
-  if (!provider) {
-    return { error: `Provider "${parsed.slug}" not found`, status: 404 };
+  const row = await getEnabledProxyModel(db, parsed.slug, parsed.modelId);
+  if (!row) {
+    return {
+      error: `Model "${parsed.slug}/${parsed.modelId}" is not available (disabled or not configured).`,
+      status: 404,
+    };
   }
 
   return {
     target: {
-      endpoint: provider.endpoint,
-      apiKey: provider.apiKey,
-      providerType: provider.type,
-      modelId: parsed.modelId,
+      endpoint: row.endpoint,
+      apiKey: row.apiKey,
+      providerType: row.type,
+      modelId: row.modelId,
     },
   };
 }

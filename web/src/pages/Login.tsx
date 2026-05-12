@@ -40,7 +40,6 @@ export default function Login() {
           <Typography.Title level={3} style={{ margin: 0 }}>
             LMFlare
           </Typography.Title>
-          <Typography.Text type="secondary">LLM Proxy Admin</Typography.Text>
         </div>
         <Form layout="vertical" onFinish={onFinish} autoComplete="off">
           <Form.Item

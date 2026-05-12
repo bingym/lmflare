@@ -117,6 +117,7 @@ export interface ModelDTO {
   id: string;
   providerId: string;
   modelId: string;
+  enabled: boolean;
   createdAt: string;
 }
 
@@ -151,6 +152,17 @@ export async function removeModel(
 ): Promise<void> {
   await request(`/providers/${providerId}/models/${encodeURIComponent(modelId)}`, {
     method: "DELETE",
+  });
+}
+
+export async function setModelEnabled(
+  providerId: string,
+  modelId: string,
+  enabled: boolean
+): Promise<ModelDTO> {
+  return request(`/providers/${providerId}/models/${encodeURIComponent(modelId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
   });
 }
 

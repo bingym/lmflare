@@ -13,6 +13,7 @@ export interface Model {
   id: string;
   providerId: string;
   modelId: string;
+  enabled: boolean;
   createdAt: string;
 }
 

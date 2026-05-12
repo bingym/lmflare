@@ -11,6 +11,8 @@ import {
   listModels,
   addModels,
   deleteModel,
+  getModel,
+  updateModelEnabled,
   listApps,
   getApp,
   createApp,
@@ -146,6 +148,20 @@ admin.delete("/providers/:id/models/:modelId", async (c) => {
   const modelId = c.req.param("modelId");
   await deleteModel(c.env.DB, providerId, decodeURIComponent(modelId));
   return c.json({ ok: true });
+});
+
+admin.patch("/providers/:id/models/:modelId", async (c) => {
+  const providerId = c.req.param("id");
+  const modelId = decodeURIComponent(c.req.param("modelId"));
+  const body = await c.req.json<{ enabled?: boolean }>();
+  if (typeof body.enabled !== "boolean") {
+    return c.json({ error: "enabled (boolean) is required" }, 400);
+  }
+  const ok = await updateModelEnabled(c.env.DB, providerId, modelId, body.enabled);
+  if (!ok) return c.json({ error: "Model not found" }, 404);
+  const updated = await getModel(c.env.DB, providerId, modelId);
+  if (!updated) return c.json({ error: "Model not found" }, 404);
+  return c.json(updated);
 });
 
 // --- Apps ---

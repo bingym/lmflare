@@ -19,7 +19,9 @@ import ProviderForm from "../components/ProviderForm";
 
 export default function Providers() {
   const navigate = useNavigate();
-  const [providers, setProviders] = useState<(ProviderDTO & { modelCount: number })[]>([]);
+  const [providers, setProviders] = useState<
+    (ProviderDTO & { modelCount: number; enabledCount: number })[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -32,7 +34,8 @@ export default function Providers() {
       const withCounts = await Promise.all(
         list.map(async (p) => {
           const models = await listModels(p.id);
-          return { ...p, modelCount: models.length };
+          const enabledCount = models.filter((m) => m.enabled).length;
+          return { ...p, modelCount: models.length, enabledCount };
         })
       );
       setProviders(withCounts);
@@ -141,7 +144,7 @@ export default function Providers() {
                   <Space size={4}>
                     <DatabaseOutlined style={{ color: "rgba(0,0,0,0.45)" }} />
                     <Typography.Text type="secondary">
-                      {p.modelCount} model{p.modelCount !== 1 ? "s" : ""}
+                      {p.enabledCount}/{p.modelCount} 已启用
                     </Typography.Text>
                   </Space>
                   <Space size={4}>

@@ -14,10 +14,12 @@ function rowToProvider(row: Record<string, unknown>): Provider {
 }
 
 function rowToModel(row: Record<string, unknown>): Model {
+  const en = row.enabled;
   return {
     id: row.id as string,
     providerId: row.provider_id as string,
     modelId: row.model_id as string,
+    enabled: en === undefined || en === null ? true : Number(en) === 1,
     createdAt: row.created_at as string,
   };
 }
@@ -128,6 +130,7 @@ export async function listAllModelsWithProvider(
     .prepare(
       `SELECT m.*, p.slug AS provider_slug, p.type AS provider_type, p.endpoint AS provider_endpoint, p.api_key AS provider_api_key
        FROM models m JOIN providers p ON m.provider_id = p.id
+       WHERE m.enabled = 1
        ORDER BY p.slug, m.model_id`
     )
     .all();
@@ -164,6 +167,62 @@ export async function deleteModel(
     .prepare("DELETE FROM models WHERE provider_id = ? AND model_id = ?")
     .bind(providerId, modelId)
     .run();
+}
+
+export async function getModel(
+  db: D1Database,
+  providerId: string,
+  modelId: string
+): Promise<Model | null> {
+  const row = await db
+    .prepare("SELECT * FROM models WHERE provider_id = ? AND model_id = ?")
+    .bind(providerId, modelId)
+    .first();
+  return row ? rowToModel(row as Record<string, unknown>) : null;
+}
+
+/** Provider slug + upstream model id; only rows with enabled = 1. */
+export async function getEnabledProxyModel(
+  db: D1Database,
+  providerSlug: string,
+  modelId: string
+): Promise<{
+  endpoint: string;
+  apiKey: string;
+  type: "openai" | "anthropic";
+  modelId: string;
+} | null> {
+  const row = await db
+    .prepare(
+      `SELECT p.endpoint AS endpoint, p.api_key AS api_key, p.type AS type
+       FROM models m
+       JOIN providers p ON m.provider_id = p.id
+       WHERE p.slug = ? AND m.model_id = ? AND m.enabled = 1`
+    )
+    .bind(providerSlug, modelId)
+    .first();
+  if (!row) return null;
+  return {
+    endpoint: row.endpoint as string,
+    apiKey: row.api_key as string,
+    type: row.type as "openai" | "anthropic",
+    modelId,
+  };
+}
+
+export async function updateModelEnabled(
+  db: D1Database,
+  providerId: string,
+  modelId: string,
+  enabled: boolean
+): Promise<boolean> {
+  const r = await db
+    .prepare(
+      "UPDATE models SET enabled = ? WHERE provider_id = ? AND model_id = ?"
+    )
+    .bind(enabled ? 1 : 0, providerId, modelId)
+    .run();
+  return (r.meta.changes ?? 0) > 0;
 }
 
 // --- Apps ---
