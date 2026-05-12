@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "predev": "mkdir -p web/dist",
+    "postinstall": "npm ci --prefix web",
     "dev": "wrangler dev",
-    "dev:web": "cd web && npm run dev",
-    "build:web": "cd web && npm run build",
-    "deploy": "cd web && npm run build && cd .. && wrangler deploy",
+    "dev:web": "npm run dev --prefix web",
+    "build:web": "npm ci --prefix web && npm run build --prefix web",
+    "deploy": "npm ci --prefix web && npm run build --prefix web && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply lmflare-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply lmflare-db --remote"
   },
