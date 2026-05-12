@@ -1,0 +1,23 @@
+{
+  "name": "lmflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "mkdir -p web/dist",
+    "dev": "wrangler dev",
+    "dev:web": "cd web && npm run dev",
+    "build:web": "cd web && npm run build",
+    "deploy": "cd web && npm run build && cd .. && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply lmflare-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply lmflare-db --remote"
+  },
+  "dependencies": {
+    "hono": "^4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4",
+    "typescript": "^5",
+    "wrangler": "^4"
+  }
+}
