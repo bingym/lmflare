@@ -165,7 +165,7 @@ admin.delete("/apps/:id", async (c) => {
   const id = c.req.param("id");
   const app = await getApp(c.env.DB, id);
   if (app?.secretKey) {
-    await removeKey(c.env.APP_KEYS, app.secretKey);
+    await removeKey(c.env.KV, app.secretKey);
   }
   await deleteApp(c.env.DB, id);
   return c.json({ ok: true });
@@ -178,13 +178,13 @@ admin.post("/apps/:id/rotate-key", async (c) => {
 
   // Remove old key from KV if exists
   if (app.secretKey) {
-    await removeKey(c.env.APP_KEYS, app.secretKey);
+    await removeKey(c.env.KV, app.secretKey);
   }
 
   // Generate and store new key
   const newKey = generateSecretKey();
   await updateAppKey(c.env.DB, id, newKey);
-  await putKey(c.env.APP_KEYS, newKey, id);
+  await putKey(c.env.KV, newKey, id);
 
   const updated = await getApp(c.env.DB, id);
   return c.json(updated);

@@ -35,7 +35,7 @@ export interface ProviderWithModels extends Provider {
 
 export interface Env {
   DB: D1Database;
-  APP_KEYS: KVNamespace;
+  KV: KVNamespace;
   ASSETS: Fetcher;
   ADMIN_USERNAME: string;
   ADMIN_PASSWORD: string;

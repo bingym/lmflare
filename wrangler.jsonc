@@ -12,14 +12,14 @@
     {
       "binding": "DB",
       "database_name": "lmflare-db",
-      "database_id": "placeholder-replace-after-creation",
+      "database_id": "1e9cf340-3857-47a6-89a6-93c82b74523e",
       "migrations_dir": "migrations"
     }
   ],
   "kv_namespaces": [
     {
-      "binding": "APP_KEYS",
-      "id": "placeholder-replace-after-creation"
+      "binding": "KV",
+      "id": "2d00396089e24aecbaf631f13dcf5634"
     }
   ],
   // Set ADMIN_USERNAME, ADMIN_PASSWORD, JWT_SECRET via:

@@ -23,7 +23,7 @@ export const appAuth = createMiddleware<{ Bindings: Env }>(async (c, next) => {
     return c.json({ error: "Missing API key" }, 401);
   }
 
-  const appId = await lookupKey(c.env.APP_KEYS, key);
+  const appId = await lookupKey(c.env.KV, key);
   if (!appId) {
     return c.json({ error: "Invalid API key" }, 401);
   }
