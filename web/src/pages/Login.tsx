@@ -13,9 +13,13 @@ export default function Login() {
     setLoading(true);
     try {
       await login(values.username, values.password);
+      message.success("Login successful");
       navigate("/providers", { replace: true });
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "Login failed");
+      const raw = err instanceof Error ? err.message : "Login failed";
+      const errText =
+        raw === "Invalid credentials" ? "Invalid username or password" : raw;
+      message.error(errText);
     } finally {
       setLoading(false);
     }

@@ -35,6 +35,11 @@ async function request<T>(
   });
 
   if (resp.status === 401) {
+    // POST /login returns 401 for wrong password — show error on page, do not hard-navigate
+    if (path === "/login") {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error ?? "Invalid credentials");
+    }
     clearToken();
     window.location.href = "/login";
     throw new Error("Unauthorized");
