@@ -4,24 +4,63 @@ import {
   Select,
   Input,
   Button,
-  Space,
   Switch,
   message,
   Spin,
   Empty,
+  Image,
 } from "antd";
-import { SendOutlined, ClearOutlined, BulbOutlined } from "@ant-design/icons";
+import {
+  SendOutlined,
+  ClearOutlined,
+  BulbOutlined,
+  PictureOutlined,
+  CloseCircleFilled,
+} from "@ant-design/icons";
 import { listApps, type AppDTO } from "../services/api";
+
+interface ImageAttachment {
+  dataUrl: string;
+  mediaType: string;
+}
+
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  images?: ImageAttachment[];
   reasoningContent?: string;
 }
 
 interface ModelItem {
   id: string;
   owned_by: string;
+}
+
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+function fileToDataUrl(file: File): Promise<ImageAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve({ dataUrl: reader.result as string, mediaType: file.type });
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function buildContentParts(text: string, images: ImageAttachment[]): ContentPart[] | string {
+  if (images.length === 0) return text;
+  const parts: ContentPart[] = images.map((img) => ({
+    type: "image_url",
+    image_url: { url: img.dataUrl },
+  }));
+  if (text) parts.push({ type: "text", text });
+  return parts;
 }
 
 export default function Chat() {
@@ -31,6 +70,7 @@ export default function Chat() {
   const [selectedModel, setSelectedModel] = useState<string | undefined>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingInit, setLoadingInit] = useState(true);
   const [thinkingEnabled, setThinkingEnabled] = useState(false);
@@ -38,6 +78,7 @@ export default function Chat() {
   const listEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScroll = useRef(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -53,6 +94,62 @@ export default function Chat() {
   }, [messages]);
 
   const selectedAppKey = apps.find((a) => a.id === selectedApp)?.secretKey;
+
+  const addImages = useCallback(async (files: File[]) => {
+    const valid = files.filter((f) => {
+      if (!ACCEPTED_TYPES.includes(f.type)) {
+        message.warning(`不支持的图片格式: ${f.name}`);
+        return false;
+      }
+      if (f.size > MAX_IMAGE_SIZE) {
+        message.warning(`图片过大: ${f.name} (最大 20MB)`);
+        return false;
+      }
+      return true;
+    });
+    if (valid.length === 0) return;
+    const attachments = await Promise.all(valid.map(fileToDataUrl));
+    setPendingImages((prev) => [...prev, ...attachments]);
+  }, []);
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        void addImages(imageFiles);
+      }
+    },
+    [addImages]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const files = Array.from(e.dataTransfer.files).filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (files.length > 0) void addImages(files);
+    },
+    [addImages]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const removePendingImage = useCallback((index: number) => {
+    setPendingImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const loadApps = useCallback(async () => {
     try {
@@ -97,12 +194,18 @@ export default function Chat() {
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || !selectedModel || !selectedAppKey) return;
+    if ((!text && pendingImages.length === 0) || !selectedModel || !selectedAppKey) return;
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const images = [...pendingImages];
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: text,
+      ...(images.length > 0 && { images }),
+    };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
     shouldAutoScroll.current = true;
 
@@ -113,6 +216,13 @@ export default function Chat() {
     abortRef.current = ctrl;
 
     try {
+      const apiMessages = newMessages.map((m) => ({
+        role: m.role,
+        content: m.images?.length
+          ? buildContentParts(m.content, m.images)
+          : m.content,
+      }));
+
       const resp = await fetch("/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -121,10 +231,7 @@ export default function Chat() {
         },
         body: JSON.stringify({
           model: selectedModel,
-          messages: newMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: apiMessages,
           stream: true,
           enable_thinking: thinkingEnabled,
         }),
@@ -367,6 +474,19 @@ export default function Chat() {
                     </div>
                   </details>
                 )}
+                {msg.images && msg.images.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.content ? 8 : 0 }}>
+                    {msg.images.map((img, idx) => (
+                      <Image
+                        key={idx}
+                        src={img.dataUrl}
+                        alt={`image-${idx}`}
+                        style={{ borderRadius: 8, maxHeight: 200, objectFit: "contain" }}
+                        width="auto"
+                      />
+                    ))}
+                  </div>
+                )}
                 {msg.content}
                 {msg.role === "assistant" && loading && i === messages.length - 1 && (
                   <span className="chat-cursor" />
@@ -379,28 +499,80 @@ export default function Chat() {
       </div>
 
       <div
-        style={{
-          borderTop: "1px solid #f0f0f0",
-          padding: "12px 0 0",
-        }}
+        style={{ borderTop: "1px solid #f0f0f0", padding: "12px 0 0" }}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
       >
-        <Space.Compact style={{ width: "100%" }}>
+        {pendingImages.length > 0 && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+            {pendingImages.map((img, idx) => (
+              <div key={idx} style={{ position: "relative" }}>
+                <img
+                  src={img.dataUrl}
+                  alt={`pending-${idx}`}
+                  style={{
+                    height: 64,
+                    maxWidth: 120,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    border: "1px solid #d9d9d9",
+                  }}
+                />
+                <CloseCircleFilled
+                  onClick={() => removePendingImage(idx)}
+                  style={{
+                    position: "absolute",
+                    top: -6,
+                    right: -6,
+                    fontSize: 16,
+                    color: "rgba(0,0,0,0.45)",
+                    cursor: "pointer",
+                    background: "#fff",
+                    borderRadius: "50%",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_TYPES.join(",")}
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) void addImages(files);
+            e.target.value = "";
+          }}
+        />
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button
+            icon={<PictureOutlined />}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!selectedModel || !selectedAppKey}
+            style={{ height: "auto", borderRadius: 8, flexShrink: 0 }}
+          />
           <Input.TextArea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder={
-              selectedModel ? "输入消息，Enter 发送，Shift+Enter 换行" : "请先选择模型"
+              selectedModel
+                ? "输入消息，Enter 发送，Shift+Enter 换行，可粘贴/拖拽图片"
+                : "请先选择模型"
             }
             disabled={!selectedModel || !selectedAppKey}
             autoSize={{ minRows: 1, maxRows: 4 }}
-            style={{ borderRadius: "8px 0 0 8px" }}
+            style={{ borderRadius: 8 }}
           />
           {loading ? (
             <Button
               danger
               onClick={handleStop}
-              style={{ height: "auto", borderRadius: "0 8px 8px 0" }}
+              style={{ height: "auto", borderRadius: 8, flexShrink: 0 }}
             >
               停止
             </Button>
@@ -409,13 +581,13 @@ export default function Chat() {
               type="primary"
               icon={<SendOutlined />}
               onClick={() => void handleSend()}
-              disabled={!input.trim() || !selectedModel || !selectedAppKey}
-              style={{ height: "auto", borderRadius: "0 8px 8px 0" }}
+              disabled={(!input.trim() && pendingImages.length === 0) || !selectedModel || !selectedAppKey}
+              style={{ height: "auto", borderRadius: 8, flexShrink: 0 }}
             >
               发送
             </Button>
           )}
-        </Space.Compact>
+        </div>
       </div>
     </div>
   );

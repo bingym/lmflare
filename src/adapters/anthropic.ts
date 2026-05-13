@@ -79,6 +79,53 @@ export async function openaiToAnthropic(
   });
 }
 
+interface OpenAIContentPart {
+  type: string;
+  text?: string;
+  image_url?: { url: string; detail?: string };
+}
+
+interface AnthropicContentPart {
+  type: string;
+  text?: string;
+  source?: { type: string; media_type: string; data: string };
+}
+
+function convertContentToAnthropic(content: unknown): unknown {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return content;
+
+  const parts = content as OpenAIContentPart[];
+  const hasImage = parts.some((p) => p.type === "image_url");
+  if (!hasImage) return content;
+
+  const result: AnthropicContentPart[] = [];
+  for (const part of parts) {
+    if (part.type === "text") {
+      result.push({ type: "text", text: part.text ?? "" });
+    } else if (part.type === "image_url" && part.image_url?.url) {
+      const url = part.image_url.url;
+      const dataUrlMatch = url.match(/^data:(image\/[^;]+);base64,(.+)$/);
+      if (dataUrlMatch) {
+        result.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: dataUrlMatch[1],
+            data: dataUrlMatch[2],
+          },
+        });
+      } else {
+        result.push({
+          type: "image",
+          source: { type: "url", media_type: "image/png", data: url },
+        });
+      }
+    }
+  }
+  return result;
+}
+
 function convertOpenAIToAnthropicRequest(
   body: Record<string, unknown>,
   modelId: string
@@ -97,7 +144,7 @@ function convertOpenAIToAnthropicRequest(
     } else {
       messages.push({
         role: msg.role === "assistant" ? "assistant" : "user",
-        content: msg.content,
+        content: convertContentToAnthropic(msg.content),
       });
     }
   }

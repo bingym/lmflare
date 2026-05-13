@@ -1,18 +1,20 @@
 # LMFlare
 
-LMFlare is a platform for building and deploying AI models.
+LMFlare is a platform for proxying AI models.
 
 ## Development
 
 ```bash
-npm run predev
-npm run dev:api
+# start worker
+npm run dev
+
+# start web application
 npm run dev:web
 ```
 
 ## Deployment
 
 ```bash
-npm run build:web
+# deploy worker
 npm run deploy
 ```
