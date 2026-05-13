@@ -31,7 +31,11 @@ function AdminLayout() {
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Sider theme="light" width={200} style={{ borderRight: "1px solid #f0f0f0" }}>
-        <div style={{ padding: "16px 24px", borderBottom: "1px solid #f0f0f0" }}>
+        <div
+          style={{ padding: "16px 24px", borderBottom: "1px solid #f0f0f0", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
+          onClick={() => navigate("/providers")}
+        >
+          <img src="/favicon.svg" alt="LMFlare" style={{ width: 28, height: 28 }} />
           <Typography.Title level={4} style={{ margin: 0 }}>
             LMFlare
           </Typography.Title>

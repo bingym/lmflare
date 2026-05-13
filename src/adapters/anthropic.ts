@@ -114,21 +114,30 @@ function convertOpenAIToAnthropicRequest(
   if (body.top_p !== undefined) result.top_p = body.top_p;
   if (body.stop) result.stop_sequences = Array.isArray(body.stop) ? body.stop : [body.stop];
 
+  if (body.enable_thinking) {
+    result.thinking = { type: "enabled", budget_tokens: 16384 };
+  }
+
   return result;
 }
 
 function convertAnthropicToOpenAIResponse(
   resp: Record<string, unknown>
 ): Record<string, unknown> {
-  const content = resp.content as { type: string; text?: string }[] | undefined;
+  const content = resp.content as { type: string; text?: string; thinking?: string }[] | undefined;
   const textParts = content?.filter((c) => c.type === "text").map((c) => c.text ?? "") ?? [];
   const text = textParts.join("");
+  const thinkingParts = content?.filter((c) => c.type === "thinking").map((c) => c.thinking ?? "") ?? [];
+  const reasoning = thinkingParts.join("");
   const usage = resp.usage as { input_tokens?: number; output_tokens?: number } | undefined;
 
   const stopReason = resp.stop_reason as string | null;
   let finishReason = "stop";
   if (stopReason === "max_tokens") finishReason = "length";
   else if (stopReason === "tool_use") finishReason = "tool_calls";
+
+  const msg: Record<string, unknown> = { role: "assistant", content: text };
+  if (reasoning) msg.reasoning_content = reasoning;
 
   return {
     id: `chatcmpl-${crypto.randomUUID()}`,
@@ -138,7 +147,7 @@ function convertAnthropicToOpenAIResponse(
     choices: [
       {
         index: 0,
-        message: { role: "assistant", content: text },
+        message: msg,
         finish_reason: finishReason,
       },
     ],
@@ -182,8 +191,25 @@ function transformAnthropicStreamToOpenAI(
               const type = event.type as string;
 
               if (type === "content_block_delta") {
-                const delta = event.delta as { type?: string; text?: string } | undefined;
-                if (delta?.type === "text_delta" && delta.text) {
+                const delta = event.delta as { type?: string; text?: string; thinking?: string } | undefined;
+                if (delta?.type === "thinking_delta" && delta.thinking) {
+                  const chunk = {
+                    id: chatId,
+                    object: "chat.completion.chunk",
+                    created: Math.floor(Date.now() / 1000),
+                    model: modelId,
+                    choices: [
+                      {
+                        index: 0,
+                        delta: { reasoning_content: delta.thinking },
+                        finish_reason: null,
+                      },
+                    ],
+                  };
+                  controller.enqueue(
+                    encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`)
+                  );
+                } else if (delta?.type === "text_delta" && delta.text) {
                   const chunk = {
                     id: chatId,
                     object: "chat.completion.chunk",

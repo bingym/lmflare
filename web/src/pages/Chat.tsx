@@ -5,16 +5,18 @@ import {
   Input,
   Button,
   Space,
+  Switch,
   message,
   Spin,
   Empty,
 } from "antd";
-import { SendOutlined, ClearOutlined } from "@ant-design/icons";
+import { SendOutlined, ClearOutlined, BulbOutlined } from "@ant-design/icons";
 import { listApps, type AppDTO } from "../services/api";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  reasoningContent?: string;
 }
 
 interface ModelItem {
@@ -31,14 +33,24 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingInit, setLoadingInit] = useState(true);
+  const [thinkingEnabled, setThinkingEnabled] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const listEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScroll = useRef(true);
 
-  const scrollToBottom = () => {
-    listEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const handleScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    shouldAutoScroll.current = atBottom;
   };
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(() => {
+    if (shouldAutoScroll.current) {
+      listEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const selectedAppKey = apps.find((a) => a.id === selectedApp)?.secretKey;
 
@@ -92,6 +104,7 @@ export default function Chat() {
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+    shouldAutoScroll.current = true;
 
     const assistantMsg: ChatMessage = { role: "assistant", content: "" };
     setMessages([...newMessages, assistantMsg]);
@@ -113,6 +126,7 @@ export default function Chat() {
             content: m.content,
           })),
           stream: true,
+          enable_thinking: thinkingEnabled,
         }),
         signal: ctrl.signal,
       });
@@ -128,6 +142,7 @@ export default function Chat() {
       const decoder = new TextDecoder();
       let buffer = "";
       let accumulated = "";
+      let accumulatedReasoning = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -145,15 +160,25 @@ export default function Chat() {
 
           try {
             const parsed = JSON.parse(payload) as {
-              choices?: { delta?: { content?: string } }[];
+              choices?: { delta?: { content?: string; reasoning_content?: string } }[];
             };
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              accumulated += delta;
-              const snap = accumulated;
+            const delta = parsed.choices?.[0]?.delta;
+            if (delta?.reasoning_content) {
+              accumulatedReasoning += delta.reasoning_content;
+            }
+            if (delta?.content) {
+              accumulated += delta.content;
+            }
+            if (delta?.content || delta?.reasoning_content) {
+              const snapContent = accumulated;
+              const snapReasoning = accumulatedReasoning;
               setMessages((prev) => {
                 const next = [...prev];
-                next[next.length - 1] = { role: "assistant", content: snap };
+                next[next.length - 1] = {
+                  role: "assistant",
+                  content: snapContent,
+                  ...(snapReasoning && { reasoningContent: snapReasoning }),
+                };
                 return next;
               });
             }
@@ -248,6 +273,17 @@ export default function Chat() {
           options={models.map((m) => ({ label: m.id, value: m.id }))}
           notFoundContent={selectedAppKey ? "无可用模型" : "请先选择 App"}
         />
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <BulbOutlined style={{ color: thinkingEnabled ? "#faad14" : undefined }} />
+          <Switch
+            size="small"
+            checked={thinkingEnabled}
+            onChange={setThinkingEnabled}
+          />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            思考
+          </Typography.Text>
+        </div>
         <Button
           icon={<ClearOutlined />}
           onClick={handleClear}
@@ -264,6 +300,8 @@ export default function Chat() {
       )}
 
       <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
         style={{
           flex: 1,
           overflow: "auto",
@@ -309,6 +347,26 @@ export default function Chat() {
                   fontSize: 14,
                 }}
               >
+                {msg.reasoningContent && (
+                  <details
+                    style={{
+                      marginBottom: 8,
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      background: "rgba(250,173,20,0.08)",
+                      border: "1px solid rgba(250,173,20,0.25)",
+                      fontSize: 13,
+                      color: "rgba(0,0,0,0.65)",
+                    }}
+                  >
+                    <summary style={{ cursor: "pointer", color: "#faad14", fontWeight: 500, userSelect: "none" }}>
+                      思考过程
+                    </summary>
+                    <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
+                      {msg.reasoningContent}
+                    </div>
+                  </details>
+                )}
                 {msg.content}
                 {msg.role === "assistant" && loading && i === messages.length - 1 && (
                   <span className="chat-cursor" />
