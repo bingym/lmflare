@@ -1,5 +1,6 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { Layout, Menu, Button, Typography } from "antd";
+import { Layout, Menu, Button, Typography, Skeleton } from "antd";
 import {
   CloudServerOutlined,
   AppstoreOutlined,
@@ -8,14 +9,25 @@ import {
   BarChartOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "./store/auth";
-import Login from "./pages/Login";
-import Providers from "./pages/Providers";
-import Models from "./pages/Models";
-import Apps from "./pages/Apps";
-import Chat from "./pages/Chat";
-import Usage from "./pages/Usage";
+
+const Login = lazy(() => import("./pages/Login"));
+const Providers = lazy(() => import("./pages/Providers"));
+const Models = lazy(() => import("./pages/Models"));
+const Apps = lazy(() => import("./pages/Apps"));
+const Chat = lazy(() => import("./pages/Chat"));
+const Usage = lazy(() => import("./pages/Usage"));
 
 const { Content, Sider } = Layout;
+
+function PageSkeleton() {
+  return (
+    <div style={{ padding: "8px 0" }}>
+      <Skeleton active title={{ width: 120 }} paragraph={false} style={{ marginBottom: 24 }} />
+      <Skeleton active paragraph={{ rows: 4 }} />
+      <Skeleton active paragraph={{ rows: 3 }} style={{ marginTop: 32 }} />
+    </div>
+  );
+}
 
 function AdminLayout() {
   const { logout } = useAuth();
@@ -88,14 +100,16 @@ function AdminLayout() {
       </Sider>
       <Layout>
         <Content style={{ padding: 24, overflow: "auto" }}>
-          <Routes>
-            <Route path="/providers" element={<Providers />} />
-            <Route path="/providers/:id/models" element={<Models />} />
-            <Route path="/apps" element={<Apps />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/usage" element={<Usage />} />
-            <Route path="*" element={<Navigate to="/providers" replace />} />
-          </Routes>
+          <Suspense fallback={<PageSkeleton />}>
+            <Routes>
+              <Route path="/providers" element={<Providers />} />
+              <Route path="/providers/:id/models" element={<Models />} />
+              <Route path="/apps" element={<Apps />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/usage" element={<Usage />} />
+              <Route path="*" element={<Navigate to="/providers" replace />} />
+            </Routes>
+          </Suspense>
         </Content>
       </Layout>
     </Layout>
@@ -109,7 +123,15 @@ export default function App() {
     <Routes>
       <Route
         path="/login"
-        element={loggedIn ? <Navigate to="/providers" replace /> : <Login />}
+        element={
+          loggedIn ? (
+            <Navigate to="/providers" replace />
+          ) : (
+            <Suspense fallback={<PageSkeleton />}>
+              <Login />
+            </Suspense>
+          )
+        }
       />
       <Route
         path="/*"

@@ -3,7 +3,6 @@ import {
   Typography,
   Radio,
   DatePicker,
-  Space,
   Table,
   Spin,
   message,
@@ -54,7 +53,7 @@ export default function Usage() {
       });
       setRows(data);
     } catch {
-      message.error("加载用量数据失败");
+      message.error("Failed to load usage data");
     } finally {
       setLoading(false);
     }
@@ -106,13 +105,13 @@ export default function Usage() {
 
   const summaryColumns = [
     {
-      title: groupBy === "app" ? "App" : "模型",
+      title: groupBy === "app" ? "App" : "Model",
       dataIndex: "name",
       key: "name",
       ellipsis: true,
     },
     {
-      title: "调用次数",
+      title: "Calls",
       dataIndex: "requests",
       key: "requests",
       sorter: (a: (typeof summaryData)[0], b: (typeof summaryData)[0]) =>
@@ -136,7 +135,7 @@ export default function Usage() {
       render: (v: number) => v.toLocaleString(),
     },
     {
-      title: "总 Tokens",
+      title: "Total Tokens",
       key: "total",
       sorter: (a: (typeof summaryData)[0], b: (typeof summaryData)[0]) =>
         a.prompt + a.completion - (b.prompt + b.completion),
@@ -157,7 +156,7 @@ export default function Usage() {
         }}
       >
         <Typography.Title level={4} style={{ margin: 0 }}>
-          Usage
+          Usage Analytics
         </Typography.Title>
         <Radio.Group
           value={groupBy}
@@ -166,8 +165,8 @@ export default function Usage() {
           buttonStyle="solid"
           size="small"
           options={[
-            { label: "按模型", value: "model" },
-            { label: "按 App", value: "app" },
+            { label: "By Model", value: "model" },
+            { label: "By App", value: "app" },
           ]}
         />
         <Radio.Group
@@ -176,9 +175,9 @@ export default function Usage() {
           optionType="button"
           size="small"
           options={[
-            { label: "日", value: "day" },
-            { label: "周", value: "week" },
-            { label: "月", value: "month" },
+            { label: "Day", value: "day" },
+            { label: "Week", value: "week" },
+            { label: "Month", value: "month" },
           ]}
         />
         <RangePicker
@@ -196,12 +195,12 @@ export default function Usage() {
         </div>
       ) : (
         <>
-          <Typography.Title level={5}>调用次数</Typography.Title>
+          <Typography.Title level={5}>Calls</Typography.Title>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" fontSize={12} />
-              <YAxis fontSize={12} />
+              <YAxis fontSize={12} allowDecimals={false} />
               <Tooltip />
               <Legend />
               {dimensions.map((dim, i) => (
@@ -220,13 +219,13 @@ export default function Usage() {
           </ResponsiveContainer>
 
           <Typography.Title level={5} style={{ marginTop: 32 }}>
-            Token 用量
+            Token Usage
           </Typography.Title>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" fontSize={12} />
-              <YAxis fontSize={12} />
+              <YAxis fontSize={12} allowDecimals={false} />
               <Tooltip />
               <Legend />
               {dimensions.map((dim, i) => (
@@ -247,7 +246,7 @@ export default function Usage() {
           </ResponsiveContainer>
 
           <Typography.Title level={5} style={{ marginTop: 32 }}>
-            汇总
+            Summary
           </Typography.Title>
           <Table
             dataSource={summaryData}
