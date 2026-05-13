@@ -277,3 +277,102 @@ export async function deleteApp(
 ): Promise<void> {
   await db.prepare("DELETE FROM apps WHERE id = ?").bind(id).run();
 }
+
+// --- Usage Logs ---
+
+export interface UsageLogInput {
+  id: string;
+  appId: string;
+  model: string;
+  endpoint: string;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export async function insertUsageLog(
+  db: D1Database,
+  log: UsageLogInput
+): Promise<void> {
+  await db
+    .prepare(
+      "INSERT INTO usage_logs (id, app_id, model, endpoint, prompt_tokens, completion_tokens, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+    )
+    .bind(log.id, log.appId, log.model, log.endpoint, log.promptTokens, log.completionTokens)
+    .run();
+}
+
+export interface UsageQueryParams {
+  groupBy: "app" | "model";
+  period: "day" | "week" | "month";
+  start: string;
+  end: string;
+  appId?: string;
+  model?: string;
+}
+
+export interface UsageRow {
+  dateKey: string;
+  dimension: string;
+  dimensionName: string;
+  requests: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export async function queryUsage(
+  db: D1Database,
+  params: UsageQueryParams
+): Promise<UsageRow[]> {
+  const dateExpr =
+    params.period === "month"
+      ? "strftime('%Y-%m', u.created_at)"
+      : params.period === "week"
+        ? "strftime('%Y-W%W', u.created_at)"
+        : "strftime('%Y-%m-%d', u.created_at)";
+
+  const dimCol = params.groupBy === "app" ? "u.app_id" : "u.model";
+
+  const conditions = ["u.created_at >= ?", "u.created_at < ?"];
+  const binds: unknown[] = [params.start, params.end];
+
+  if (params.appId) {
+    conditions.push("u.app_id = ?");
+    binds.push(params.appId);
+  }
+  if (params.model) {
+    conditions.push("u.model = ?");
+    binds.push(params.model);
+  }
+
+  const joinApps = params.groupBy === "app"
+    ? "LEFT JOIN apps a ON u.app_id = a.id"
+    : "";
+  const nameExpr = params.groupBy === "app"
+    ? "COALESCE(a.name, u.app_id)"
+    : "u.model";
+
+  const sql = `
+    SELECT
+      ${dateExpr} AS date_key,
+      ${dimCol} AS dimension,
+      ${nameExpr} AS dimension_name,
+      COUNT(*) AS requests,
+      SUM(u.prompt_tokens) AS prompt_tokens,
+      SUM(u.completion_tokens) AS completion_tokens
+    FROM usage_logs u
+    ${joinApps}
+    WHERE ${conditions.join(" AND ")}
+    GROUP BY date_key, dimension
+    ORDER BY date_key, dimension
+  `;
+
+  const { results } = await db.prepare(sql).bind(...binds).all();
+  return (results as Record<string, unknown>[]).map((r) => ({
+    dateKey: r.date_key as string,
+    dimension: r.dimension as string,
+    dimensionName: r.dimension_name as string,
+    requests: r.requests as number,
+    promptTokens: r.prompt_tokens as number,
+    completionTokens: r.completion_tokens as number,
+  }));
+}

@@ -18,6 +18,7 @@ import {
   createApp,
   updateAppKey,
   deleteApp,
+  queryUsage,
 } from "../services/db";
 import { generateSecretKey, putKey, removeKey } from "../services/keyStore";
 
@@ -204,6 +205,27 @@ admin.post("/apps/:id/rotate-key", async (c) => {
 
   const updated = await getApp(c.env.DB, id);
   return c.json(updated);
+});
+
+// --- Usage ---
+admin.get("/usage", async (c) => {
+  const groupBy = (c.req.query("group_by") ?? "app") as "app" | "model";
+  const period = (c.req.query("period") ?? "day") as "day" | "week" | "month";
+  const start = c.req.query("start") ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const end = c.req.query("end") ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const appId = c.req.query("app_id");
+  const model = c.req.query("model");
+
+  const rows = await queryUsage(c.env.DB, {
+    groupBy,
+    period,
+    start,
+    end,
+    appId: appId || undefined,
+    model: model || undefined,
+  });
+
+  return c.json(rows);
 });
 
 export default admin;

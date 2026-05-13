@@ -5,6 +5,7 @@ import {
   AppstoreOutlined,
   LogoutOutlined,
   MessageOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "./store/auth";
 import Login from "./pages/Login";
@@ -12,6 +13,7 @@ import Providers from "./pages/Providers";
 import Models from "./pages/Models";
 import Apps from "./pages/Apps";
 import Chat from "./pages/Chat";
+import Usage from "./pages/Usage";
 
 const { Content, Sider } = Layout;
 
@@ -22,11 +24,13 @@ function AdminLayout() {
 
   const menuKey = location.pathname.startsWith("/chat")
     ? "chat"
-    : location.pathname.startsWith("/providers")
-      ? "providers"
-      : location.pathname.startsWith("/apps")
-        ? "apps"
-        : "providers";
+    : location.pathname.startsWith("/usage")
+      ? "usage"
+      : location.pathname.startsWith("/providers")
+        ? "providers"
+        : location.pathname.startsWith("/apps")
+          ? "apps"
+          : "providers";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -63,6 +67,12 @@ function AdminLayout() {
               label: "Chat",
               onClick: () => navigate("/chat"),
             },
+            {
+              key: "usage",
+              icon: <BarChartOutlined />,
+              label: "Usage",
+              onClick: () => navigate("/usage"),
+            },
           ]}
         />
         <div style={{ position: "absolute", bottom: 16, left: 0, width: "100%", padding: "0 16px" }}>
@@ -83,6 +93,7 @@ function AdminLayout() {
             <Route path="/providers/:id/models" element={<Models />} />
             <Route path="/apps" element={<Apps />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/usage" element={<Usage />} />
             <Route path="*" element={<Navigate to="/providers" replace />} />
           </Routes>
         </Content>

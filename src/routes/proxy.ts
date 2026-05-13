@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import type { Env } from "../types";
 import { appAuth } from "../middleware/appAuth";
-import { listAllModelsWithProvider, getEnabledProxyModel } from "../services/db";
+import { listAllModelsWithProvider, getEnabledProxyModel, insertUsageLog } from "../services/db";
 import { proxyToOpenAI, anthropicToOpenAI } from "../adapters/openai";
 import { proxyToAnthropic, openaiToAnthropic } from "../adapters/anthropic";
 import type { ProxyTarget } from "../adapters/base";
+import { extractUsageFromJSON, wrapStreamForUsage, type TokenUsage } from "../services/usage";
 
 const proxy = new Hono<{ Bindings: Env }>();
 
@@ -46,6 +47,50 @@ async function resolveTarget(
   };
 }
 
+function logUsage(
+  ctx: ExecutionContext,
+  db: D1Database,
+  appId: string,
+  model: string,
+  endpoint: string,
+  usagePromise: Promise<TokenUsage>
+) {
+  ctx.waitUntil(
+    usagePromise.then((u) =>
+      insertUsageLog(db, {
+        id: crypto.randomUUID(),
+        appId,
+        model,
+        endpoint,
+        promptTokens: u.prompt_tokens,
+        completionTokens: u.completion_tokens,
+      })
+    ).catch(() => {})
+  );
+}
+
+function trackResponse(
+  resp: Response,
+  isStreaming: boolean
+): { response: Response; usage: Promise<TokenUsage> } {
+  if (isStreaming && resp.body) {
+    const { stream, usage } = wrapStreamForUsage(resp.body);
+    return {
+      response: new Response(stream, {
+        status: resp.status,
+        headers: resp.headers,
+      }),
+      usage,
+    };
+  }
+
+  const cloned = resp.clone();
+  const usage = cloned.json()
+    .then((body) => extractUsageFromJSON(body as Record<string, unknown>))
+    .catch(() => ({ prompt_tokens: 0, completion_tokens: 0 }));
+  return { response: resp, usage };
+}
+
 // --- GET /v1/models ---
 proxy.get("/models", async (c) => {
   const allModels = await listAllModelsWithProvider(c.env.DB);
@@ -69,12 +114,15 @@ proxy.post("/chat/completions", async (c) => {
 
   const { target } = result;
   const isStreaming = body.stream === true;
+  const appId = c.get("appId" as never) as string;
 
-  if (target.providerType === "openai") {
-    return proxyToOpenAI(target, "/v1/chat/completions", body, isStreaming);
-  } else {
-    return openaiToAnthropic(target, body, isStreaming);
-  }
+  const raw = target.providerType === "openai"
+    ? await proxyToOpenAI(target, "/v1/chat/completions", body, isStreaming)
+    : await openaiToAnthropic(target, body, isStreaming);
+
+  const { response, usage } = trackResponse(raw, isStreaming);
+  logUsage(c.executionCtx, c.env.DB, appId, model, "chat/completions", usage);
+  return response;
 });
 
 // --- POST /v1/responses ---
@@ -88,15 +136,19 @@ proxy.post("/responses", async (c) => {
 
   const { target } = result;
   const isStreaming = body.stream === true;
+  const appId = c.get("appId" as never) as string;
 
-  if (target.providerType === "openai") {
-    return proxyToOpenAI(target, "/v1/responses", body, isStreaming);
-  } else {
+  if (target.providerType !== "openai") {
     return c.json(
       { error: "Responses API is not supported for Anthropic providers" },
       400
     );
   }
+
+  const raw = await proxyToOpenAI(target, "/v1/responses", body, isStreaming);
+  const { response, usage } = trackResponse(raw, isStreaming);
+  logUsage(c.executionCtx, c.env.DB, appId, model, "responses", usage);
+  return response;
 });
 
 // --- POST /v1/messages (Anthropic-style) ---
@@ -110,12 +162,15 @@ proxy.post("/messages", async (c) => {
 
   const { target } = result;
   const isStreaming = body.stream === true;
+  const appId = c.get("appId" as never) as string;
 
-  if (target.providerType === "anthropic") {
-    return proxyToAnthropic(target, body, isStreaming);
-  } else {
-    return anthropicToOpenAI(target, body, isStreaming);
-  }
+  const raw = target.providerType === "anthropic"
+    ? await proxyToAnthropic(target, body, isStreaming)
+    : await anthropicToOpenAI(target, body, isStreaming);
+
+  const { response, usage } = trackResponse(raw, isStreaming);
+  logUsage(c.executionCtx, c.env.DB, appId, model, "messages", usage);
+  return response;
 });
 
 export default proxy;

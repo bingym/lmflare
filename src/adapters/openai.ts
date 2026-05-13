@@ -11,7 +11,11 @@ export async function proxyToOpenAI(
   isStreaming: boolean
 ): Promise<Response> {
   const url = `${target.endpoint.replace(/\/+$/, "")}${path}`;
-  const upstreamBody = { ...body, model: target.modelId };
+  const upstreamBody: Record<string, unknown> = { ...body, model: target.modelId };
+
+  if (isStreaming) {
+    upstreamBody.stream_options = { include_usage: true };
+  }
 
   const resp = await fetch(url, {
     method: "POST",

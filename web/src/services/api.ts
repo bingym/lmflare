@@ -193,3 +193,32 @@ export async function deleteApp(id: string): Promise<void> {
 export async function rotateKey(appId: string): Promise<AppDTO> {
   return request(`/apps/${appId}/rotate-key`, { method: "POST" });
 }
+
+// --- Usage ---
+export interface UsageRowDTO {
+  dateKey: string;
+  dimension: string;
+  dimensionName: string;
+  requests: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export async function fetchUsage(params: {
+  groupBy: "app" | "model";
+  period: "day" | "week" | "month";
+  start: string;
+  end: string;
+  appId?: string;
+  model?: string;
+}): Promise<UsageRowDTO[]> {
+  const qs = new URLSearchParams({
+    group_by: params.groupBy,
+    period: params.period,
+    start: params.start,
+    end: params.end,
+  });
+  if (params.appId) qs.set("app_id", params.appId);
+  if (params.model) qs.set("model", params.model);
+  return request(`/usage?${qs.toString()}`);
+}
