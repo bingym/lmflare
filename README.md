@@ -2,19 +2,25 @@
 
 LMFlare is a platform for proxying AI models.
 
+## Setup
+
+```bash
+pnpm install
+```
+
 ## Development
 
 ```bash
 # start worker
-npm run dev
+pnpm dev
 
 # start web application
-npm run dev:web
+pnpm dev:web
 ```
 
 ## Deployment
 
 ```bash
 # deploy worker
-npm run deploy
+pnpm deploy
 ```
