@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ConfigProvider } from "antd";
-import { AuthProvider } from "./store/auth";
 import App from "./App";
 import "./global.css";
 
@@ -23,9 +22,7 @@ createRoot(document.getElementById("root")!).render(
       }}
     >
       <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <App />
       </BrowserRouter>
     </ConfigProvider>
   </StrictMode>

@@ -1,7 +1,5 @@
 import { Hono } from "hono";
 import type { Env } from "../types";
-import { adminAuth } from "../middleware/adminAuth";
-import { signJwt } from "../services/jwt";
 import {
   listProviders,
   getProvider,
@@ -23,22 +21,6 @@ import {
 import { generateSecretKey, putKey, removeKey } from "../services/keyStore";
 
 const admin = new Hono<{ Bindings: Env }>();
-
-// --- Login (no auth required) ---
-admin.post("/login", async (c) => {
-  const body = await c.req.json<{ username: string; password: string }>();
-  if (
-    body.username !== c.env.ADMIN_USERNAME ||
-    body.password !== c.env.ADMIN_PASSWORD
-  ) {
-    return c.json({ error: "Invalid credentials" }, 401);
-  }
-  const token = await signJwt({ sub: body.username }, c.env.JWT_SECRET);
-  return c.json({ token });
-});
-
-// All routes below require JWT
-admin.use("/*", adminAuth);
 
 // --- Providers ---
 admin.get("/providers", async (c) => {

@@ -5,8 +5,10 @@ import {
   DatePicker,
   Table,
   Spin,
+  Button,
   message,
 } from "antd";
+import { SyncOutlined } from "@ant-design/icons";
 import {
   LineChart,
   Line,
@@ -187,6 +189,14 @@ export default function Usage() {
             if (v?.[0] && v?.[1]) setRange([v[0], v[1]]);
           }}
         />
+        <Button
+          icon={<SyncOutlined spin={loading} />}
+          onClick={() => void load()}
+          loading={loading}
+          size="small"
+        >
+          刷新
+        </Button>
       </div>
 
       {loading ? (

@@ -22,10 +22,5 @@
       "id": "2d00396089e24aecbaf631f13dcf5634"
     }
   ],
-  // Set ADMIN_USERNAME, ADMIN_PASSWORD, JWT_SECRET via:
-  //   wrangler secret put ADMIN_USERNAME
-  //   wrangler secret put ADMIN_PASSWORD
-  //   wrangler secret put JWT_SECRET
-  // For local dev, use .dev.vars file
   "vars": {}
 }

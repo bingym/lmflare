@@ -1,16 +1,13 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { Layout, Menu, Button, Typography, Skeleton } from "antd";
+import { Layout, Menu, Typography, Skeleton } from "antd";
 import {
   CloudServerOutlined,
   AppstoreOutlined,
-  LogoutOutlined,
   MessageOutlined,
   BarChartOutlined,
 } from "@ant-design/icons";
-import { useAuth } from "./store/auth";
 
-const Login = lazy(() => import("./pages/Login"));
 const Providers = lazy(() => import("./pages/Providers"));
 const Models = lazy(() => import("./pages/Models"));
 const Apps = lazy(() => import("./pages/Apps"));
@@ -29,8 +26,7 @@ function PageSkeleton() {
   );
 }
 
-function AdminLayout() {
-  const { logout } = useAuth();
+export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -87,16 +83,6 @@ function AdminLayout() {
             },
           ]}
         />
-        <div style={{ position: "absolute", bottom: 16, left: 0, width: "100%", padding: "0 16px" }}>
-          <Button
-            type="text"
-            icon={<LogoutOutlined />}
-            onClick={() => { logout(); navigate("/login"); }}
-            block
-          >
-            Logout
-          </Button>
-        </div>
       </Sider>
       <Layout>
         <Content style={{ padding: 24, overflow: "auto" }}>
@@ -113,30 +99,5 @@ function AdminLayout() {
         </Content>
       </Layout>
     </Layout>
-  );
-}
-
-export default function App() {
-  const { loggedIn } = useAuth();
-
-  return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          loggedIn ? (
-            <Navigate to="/providers" replace />
-          ) : (
-            <Suspense fallback={<PageSkeleton />}>
-              <Login />
-            </Suspense>
-          )
-        }
-      />
-      <Route
-        path="/*"
-        element={loggedIn ? <AdminLayout /> : <Navigate to="/login" replace />}
-      />
-    </Routes>
   );
 }

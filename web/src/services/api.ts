@@ -1,49 +1,18 @@
 const BASE = "/api/admin";
 
-function getToken(): string | null {
-  return localStorage.getItem("lmflare_token");
-}
-
-export function setToken(token: string) {
-  localStorage.setItem("lmflare_token", token);
-}
-
-export function clearToken() {
-  localStorage.removeItem("lmflare_token");
-}
-
-export function isLoggedIn(): boolean {
-  return !!getToken();
-}
-
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const resp = await fetch(`${BASE}${path}`, {
     ...options,
     headers,
   });
-
-  if (resp.status === 401) {
-    // POST /login returns 401 for wrong password — show error on page, do not hard-navigate
-    if (path === "/login") {
-      const body = await resp.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? "Invalid credentials");
-    }
-    clearToken();
-    window.location.href = "/login";
-    throw new Error("Unauthorized");
-  }
 
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
@@ -51,16 +20,6 @@ async function request<T>(
   }
 
   return resp.json() as Promise<T>;
-}
-
-// --- Auth ---
-export async function login(username: string, password: string): Promise<string> {
-  const data = await request<{ token: string }>("/login", {
-    method: "POST",
-    body: JSON.stringify({ username, password }),
-  });
-  setToken(data.token);
-  return data.token;
 }
 
 // --- Providers ---
