@@ -10,10 +10,8 @@ import {
 } from "antd";
 import { SyncOutlined } from "@ant-design/icons";
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -31,8 +29,147 @@ const COLORS = [
   "#13c2c2", "#eb2f96", "#fa8c16", "#2f54eb", "#a0d911",
 ];
 
+const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
+const CHART_HEIGHT = 160;
+
 type GroupBy = "app" | "model";
 type Period = "day" | "week" | "month";
+
+/** Matches SQLite strftime('%Y-W%W') (week starts Sunday). */
+function sqliteWeekKey(d: Dayjs): string {
+  const year = d.year();
+  const yday = d.diff(dayjs(`${year}-01-01`), "day");
+  const jan1Wday = dayjs(`${year}-01-01`).day();
+  const week = Math.floor((yday + jan1Wday) / 7);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+function buildPeriodKeys(
+  start: Dayjs,
+  end: Dayjs,
+  period: Period
+): string[] {
+  const from = start.startOf("day");
+  const to = end.startOf("day");
+  if (from.isAfter(to)) return [];
+
+  if (period === "day") {
+    const keys: string[] = [];
+    let cur = from;
+    while (!cur.isAfter(to)) {
+      keys.push(cur.format("YYYY-MM-DD"));
+      cur = cur.add(1, "day");
+    }
+    return keys;
+  }
+
+  if (period === "month") {
+    const keys: string[] = [];
+    let cur = from.startOf("month");
+    const last = to.startOf("month");
+    while (!cur.isAfter(last)) {
+      keys.push(cur.format("YYYY-MM"));
+      cur = cur.add(1, "month");
+    }
+    return keys;
+  }
+
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  let cur = from;
+  while (!cur.isAfter(to)) {
+    const key = sqliteWeekKey(cur);
+    if (!seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+    cur = cur.add(1, "day");
+  }
+  return keys;
+}
+
+function formatChartDate(dateKey: string, period: Period): string {
+  if (period === "month") {
+    const [, m] = dateKey.split("-");
+    return `${Number(m)}月`;
+  }
+  if (period === "week") {
+    return dateKey.replace(/^\d{4}-/, "");
+  }
+  const d = dayjs(dateKey);
+  return d.isValid() ? d.format("M-D") : dateKey;
+}
+
+type UsageBarChartProps = {
+  data: Record<string, unknown>[];
+  dimensions: string[];
+  valueKey: "requests" | "total";
+  stackId: string;
+  period: Period;
+};
+
+function UsageBarChart({
+  data,
+  dimensions,
+  valueKey,
+  stackId,
+  period,
+}: UsageBarChartProps) {
+  const xTicks =
+    data.length <= 1
+      ? data.map((d) => d.date as string)
+      : [data[0]!.date as string, data[data.length - 1]!.date as string];
+
+  return (
+    <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+      <BarChart
+        data={data}
+        barCategoryGap="58%"
+        margin={{ top: 8, right: 8, bottom: 0, left: 8 }}
+      >
+        <CartesianGrid vertical={false} stroke="#eee" strokeDasharray="" />
+        <XAxis
+          dataKey="date"
+          ticks={xTicks}
+          tickLine={false}
+          axisLine={{ stroke: "#e8e8e8" }}
+          tick={{ fill: "#999", fontSize: 12 }}
+          tickFormatter={(v) => formatChartDate(String(v), period)}
+          dy={6}
+        />
+        <YAxis hide allowDecimals={false} tickCount={2} />
+        <Tooltip
+          contentStyle={{
+            borderRadius: 8,
+            border: "none",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+          }}
+          labelFormatter={(v) => formatChartDate(String(v), period)}
+        />
+        {dimensions.length > 1 && (
+          <Legend
+            iconType="circle"
+            iconSize={8}
+            wrapperStyle={{ paddingTop: 8, fontSize: 12 }}
+          />
+        )}
+        {dimensions.map((dim, i) => (
+          <Bar
+            key={dim}
+            dataKey={`${dim}_${valueKey}`}
+            name={dim}
+            fill={COLORS[i % COLORS.length]}
+            stackId={stackId}
+            maxBarSize={7}
+            radius={
+              i === dimensions.length - 1 ? BAR_RADIUS : [0, 0, 0, 0]
+            }
+          />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
 
 export default function Usage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("model");
@@ -71,19 +208,32 @@ export default function Usage() {
   );
 
   const chartData = useMemo(() => {
+    const periodKeys = buildPeriodKeys(range[0], range[1], period);
     const dateMap = new Map<string, Record<string, unknown>>();
+
+    for (const dateKey of periodKeys) {
+      const entry: Record<string, unknown> = { date: dateKey };
+      for (const dim of dimensions) {
+        entry[`${dim}_requests`] = 0;
+        entry[`${dim}_prompt`] = 0;
+        entry[`${dim}_completion`] = 0;
+        entry[`${dim}_total`] = 0;
+      }
+      dateMap.set(dateKey, entry);
+    }
+
     for (const r of rows) {
-      if (!dateMap.has(r.dateKey)) dateMap.set(r.dateKey, { date: r.dateKey });
-      const entry = dateMap.get(r.dateKey)!;
+      const entry = dateMap.get(r.dateKey);
+      if (!entry) continue;
       entry[`${r.dimensionName}_requests`] = r.requests;
       entry[`${r.dimensionName}_prompt`] = r.promptTokens;
       entry[`${r.dimensionName}_completion`] = r.completionTokens;
-      entry[`${r.dimensionName}_total`] = r.promptTokens + r.completionTokens;
+      entry[`${r.dimensionName}_total`] =
+        r.promptTokens + r.completionTokens;
     }
-    return [...dateMap.values()].sort((a, b) =>
-      (a.date as string).localeCompare(b.date as string)
-    );
-  }, [rows]);
+
+    return periodKeys.map((k) => dateMap.get(k)!);
+  }, [rows, range, period, dimensions]);
 
   const summaryData = useMemo(() => {
     const map = new Map<
@@ -206,54 +356,24 @@ export default function Usage() {
       ) : (
         <>
           <Typography.Title level={5}>Calls</Typography.Title>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" fontSize={12} />
-              <YAxis fontSize={12} allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              {dimensions.map((dim, i) => (
-                <Line
-                  key={dim}
-                  type="monotone"
-                  dataKey={`${dim}_requests`}
-                  name={dim}
-                  stroke={COLORS[i % COLORS.length]}
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+          <UsageBarChart
+            data={chartData}
+            dimensions={dimensions}
+            valueKey="requests"
+            stackId="calls"
+            period={period}
+          />
 
           <Typography.Title level={5} style={{ marginTop: 32 }}>
             Token Usage
           </Typography.Title>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" fontSize={12} />
-              <YAxis fontSize={12} allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              {dimensions.map((dim, i) => (
-                <Area
-                  key={dim}
-                  type="monotone"
-                  dataKey={`${dim}_total`}
-                  name={dim}
-                  stroke={COLORS[i % COLORS.length]}
-                  fill={COLORS[i % COLORS.length]}
-                  fillOpacity={0.15}
-                  strokeWidth={2}
-                  connectNulls
-                  stackId="tokens"
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
+          <UsageBarChart
+            data={chartData}
+            dimensions={dimensions}
+            valueKey="total"
+            stackId="tokens"
+            period={period}
+          />
 
           <Typography.Title level={5} style={{ marginTop: 32 }}>
             Summary
