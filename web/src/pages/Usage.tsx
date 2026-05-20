@@ -322,7 +322,7 @@ export default function Usage() {
       ),
     },
     {
-      title: "请求次数",
+      title: "Requests",
       dataIndex: "requests",
       key: "requests",
       align: "right" as const,
@@ -383,8 +383,8 @@ export default function Usage() {
             buttonStyle="solid"
             size="small"
             options={[
-              { label: "按模型", value: "model" },
-              { label: "按应用", value: "app" },
+              { label: "By Model", value: "model" },
+              { label: "By App", value: "app" },
             ]}
           />
           <Radio.Group
@@ -393,9 +393,9 @@ export default function Usage() {
             optionType="button"
             size="small"
             options={[
-              { label: "日", value: "day" },
-              { label: "周", value: "week" },
-              { label: "月", value: "month" },
+              { label: "Day", value: "day" },
+              { label: "Week", value: "week" },
+              { label: "Month", value: "month" },
             ]}
           />
           <RangePicker
@@ -411,7 +411,7 @@ export default function Usage() {
             loading={loading}
             size="small"
           >
-            刷新
+            Refresh
           </Button>
         </div>
       </div>
@@ -427,10 +427,12 @@ export default function Usage() {
             <Col xs={12} sm={6}>
               <Card size="small" style={{ border: "1px solid #f0f0f0" }}>
                 <Statistic
-                  title={<span style={{ fontSize: 12, color: "#999" }}>总请求数</span>}
+                  title={<span style={{ fontSize: 12, color: "#999" }}>Total Requests</span>}
                   value={totals.requests}
                   prefix={<ThunderboltOutlined style={{ color: "#4f46e5", fontSize: 16 }} />}
-                  valueStyle={{ fontSize: 22, fontWeight: 600 }}
+                  styles={{
+                    content: { fontSize: 22, fontWeight: 600 }
+                  }}
                 />
               </Card>
             </Col>
@@ -440,7 +442,9 @@ export default function Usage() {
                   title={<span style={{ fontSize: 12, color: "#999" }}>Prompt Tokens</span>}
                   value={totals.prompt}
                   prefix={<MessageOutlined style={{ color: "#0ea5e9", fontSize: 16 }} />}
-                  valueStyle={{ fontSize: 22, fontWeight: 600 }}
+                  styles={{
+                    content: { fontSize: 22, fontWeight: 600 }
+                  }}
                   formatter={(v) => formatNumber(v as number)}
                 />
               </Card>
@@ -451,7 +455,9 @@ export default function Usage() {
                   title={<span style={{ fontSize: 12, color: "#999" }}>Completion Tokens</span>}
                   value={totals.completion}
                   prefix={<CodeOutlined style={{ color: "#10b981", fontSize: 16 }} />}
-                  valueStyle={{ fontSize: 22, fontWeight: 600 }}
+                  styles={{
+                    content: { fontSize: 22, fontWeight: 600 }
+                  }}
                   formatter={(v) => formatNumber(v as number)}
                 />
               </Card>
@@ -462,7 +468,9 @@ export default function Usage() {
                   title={<span style={{ fontSize: 12, color: "#999" }}>Total Tokens</span>}
                   value={totals.prompt + totals.completion}
                   prefix={<FileTextOutlined style={{ color: "#f59e0b", fontSize: 16 }} />}
-                  valueStyle={{ fontSize: 22, fontWeight: 600 }}
+                  styles={{
+                    content: { fontSize: 22, fontWeight: 600 }
+                  }}
                   formatter={(v) => formatNumber(v as number)}
                 />
               </Card>
@@ -477,7 +485,7 @@ export default function Usage() {
                 dimensions={dimensions}
                 valueKey="requests"
                 period={period}
-                title="请求趋势"
+                title="Request Trend"
               />
             </Col>
             <Col xs={24} lg={12}>
@@ -486,7 +494,7 @@ export default function Usage() {
                 dimensions={dimensions}
                 valueKey="total"
                 period={period}
-                title="Token 用量趋势"
+                title="Token Usage Trend"
               />
             </Col>
           </Row>
@@ -498,7 +506,7 @@ export default function Usage() {
                 dimensions={dimensions}
                 valueKey="prompt"
                 period={period}
-                title="Prompt Tokens 趋势"
+                title="Prompt Tokens Trend"
               />
             </Col>
             <Col xs={24} lg={12}>
@@ -507,7 +515,7 @@ export default function Usage() {
                 dimensions={dimensions}
                 valueKey="completion"
                 period={period}
-                title="Completion Tokens 趋势"
+                title="Completion Tokens Trend"
               />
             </Col>
           </Row>
@@ -520,7 +528,7 @@ export default function Usage() {
           >
             <div style={{ padding: "14px 16px 0" }}>
               <Typography.Text strong style={{ fontSize: 14 }}>
-                明细汇总
+                Summary
               </Typography.Text>
             </div>
             <Table

@@ -112,7 +112,7 @@ export default function Models() {
       setRemoteModels(models);
     } catch (err) {
       setFetchError(
-        err instanceof Error ? err.message : "拉取远程模型失败"
+        err instanceof Error ? err.message : "Failed to fetch remote models"
       );
     } finally {
       setLoadingRemote(false);
@@ -142,9 +142,9 @@ export default function Models() {
       if (!providerId) return;
       await addModels(providerId, [modelId]);
       await loadLocal();
-      message.success("已添加");
+      message.success("Added");
     }).catch((err) => {
-      message.error(err instanceof Error ? err.message : "添加失败");
+      message.error(err instanceof Error ? err.message : "Failed to add");
     });
 
   const handleRemove = (modelId: string) =>
@@ -152,15 +152,15 @@ export default function Models() {
       if (!providerId) return;
       await removeModel(providerId, modelId);
       await loadLocal();
-      message.success("已移除");
+      message.success("Removed");
     }).catch((err) => {
-      message.error(err instanceof Error ? err.message : "移除失败");
+      message.error(err instanceof Error ? err.message : "Failed to remove");
     });
 
   const handleManualAdd = () => {
     const name = manualName.trim();
     if (!name || !providerId) {
-      message.warning("请输入模型名");
+      message.warning("Please enter model name");
       return;
     }
     void withOp("manual-add", async () => {
@@ -168,9 +168,9 @@ export default function Models() {
       await loadLocal();
       setManualName("");
       setAddModalOpen(false);
-      message.success("已添加");
+      message.success("Added");
     }).catch((err) => {
-      message.error(err instanceof Error ? err.message : "添加失败");
+      message.error(err instanceof Error ? err.message : "Failed to add");
     });
   };
 
@@ -182,7 +182,7 @@ export default function Models() {
         prev.map((m) => (m.modelId === modelId ? updated : m))
       );
     }).catch((err) => {
-      message.error(err instanceof Error ? err.message : "更新失败");
+      message.error(err instanceof Error ? err.message : "Failed to update");
       void loadLocal();
     });
   };
@@ -200,7 +200,7 @@ export default function Models() {
 
   const remoteColumns: ColumnsType<RemoteModelDTO> = [
     {
-      title: "模型名",
+      title: "Model Name",
       dataIndex: "id",
       key: "id",
       render: (id: string) => (
@@ -208,7 +208,7 @@ export default function Models() {
       ),
     },
     {
-      title: "操作",
+      title: "Actions",
       key: "op",
       width: 100,
       align: "right",
@@ -216,7 +216,7 @@ export default function Models() {
         const added = localModelIds.has(row.id);
         const busy = operating.has(`add:${row.id}`);
         return added ? (
-          <Tag color="green">已添加</Tag>
+          <Tag color="green">Added</Tag>
         ) : (
           <Button
             type="link"
@@ -225,7 +225,7 @@ export default function Models() {
             loading={busy}
             onClick={() => void handleAddRemote(row.id)}
           >
-            添加
+            Add
           </Button>
         );
       },
@@ -239,11 +239,11 @@ export default function Models() {
         items={[
           {
             title: (
-              <a onClick={() => navigate("/providers")}>提供商</a>
+              <a onClick={() => navigate("/providers")}>Providers</a>
             ),
           },
           { title: provider?.name ?? "…" },
-          { title: "模型" },
+          { title: "Models" },
         ]}
       />
 
@@ -257,8 +257,8 @@ export default function Models() {
         </Typography.Title>
         <Space size={8}>
           <Tag color="green">{typeLabel}</Tag>
-          <Tag>{localModels.length} 个本地模型</Tag>
-          <Tag color="blue">{enabledCount} 个启用</Tag>
+          <Tag>{localModels.length} local models</Tag>
+          <Tag color="blue">{enabledCount} enabled</Tag>
         </Space>
       </div>
 
@@ -269,19 +269,19 @@ export default function Models() {
           column={1}
           style={{ marginBottom: 20 }}
         >
-          <Descriptions.Item label="API 地址">
+          <Descriptions.Item label="API Endpoint">
             <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 13 }}>
               {provider.endpoint.replace(/\/+$/, "")}
             </Typography.Text>
           </Descriptions.Item>
-          <Descriptions.Item label="接口预览">
+          <Descriptions.Item label="API Preview">
             <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 13 }}>
               {provider.type === "anthropic"
                 ? `${provider.endpoint.replace(/\/+$/, "")}/v1/messages`
                 : `${provider.endpoint.replace(/\/+$/, "")}/v1/chat/completions`}
             </Typography.Text>
           </Descriptions.Item>
-          <Descriptions.Item label="API 密钥">
+          <Descriptions.Item label="API Key">
             <Typography.Text
               copyable={{ text: provider.apiKey }}
               style={{ fontFamily: "monospace", fontSize: 13 }}
@@ -303,12 +303,12 @@ export default function Models() {
         }}
       >
         <Typography.Title level={5} style={{ margin: 0 }}>
-          模型
+          Models
         </Typography.Title>
         <Space wrap>
           <Input
             prefix={<SearchOutlined />}
-            placeholder="搜索本地模型"
+            placeholder="Search local models"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             allowClear
@@ -322,15 +322,15 @@ export default function Models() {
               setAddModalOpen(true);
             }}
           >
-            添加
+            Add
           </Button>
-          <Button onClick={openManageModal}>管理</Button>
+          <Button onClick={openManageModal}>Manage</Button>
         </Space>
       </div>
 
       <List
         dataSource={filteredLocal}
-        locale={{ emptyText: "暂无本地模型，可点击「添加」手动输入，或「管理」从上游同步" }}
+        locale={{ emptyText: "No local models, click \"Add\" to manually input, or \"Manage\" to sync from upstream" }}
         renderItem={(item) => {
           const busy = operating.has(`rm:${item.modelId}`);
           return (
@@ -344,8 +344,8 @@ export default function Models() {
               actions={[
                 <Switch
                   key="en"
-                  checkedChildren="开"
-                  unCheckedChildren="关"
+                  checkedChildren="On"
+                  unCheckedChildren="Off"
                   checked={item.enabled}
                   onChange={(v) => handleToggleEnabled(item.modelId, v)}
                   disabled={operating.has(`en:${item.modelId}`)}
@@ -383,7 +383,7 @@ export default function Models() {
                   <Typography.Text
                     copyable={{
                       text: `${provider?.slug ?? ""}/${item.modelId}`,
-                      tooltips: ["复制模型名", "已复制"],
+                      tooltips: ["Copy model name", "Copied"],
                     }}
                     style={{ fontFamily: "monospace", fontSize: 14 }}
                   >
@@ -397,15 +397,15 @@ export default function Models() {
       />
 
       <Modal
-        title={`添加模型 · ${provider?.name ?? ""}`}
+        title={`Add Model · ${provider?.name ?? ""}`}
         open={addModalOpen}
         onCancel={() => setAddModalOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
           <Input
-            placeholder="输入 model name"
+            placeholder="Enter model name"
             value={manualName}
             onChange={(e) => setManualName(e.target.value)}
             onPressEnter={() => handleManualAdd()}
@@ -417,13 +417,13 @@ export default function Models() {
             loading={operating.has("manual-add")}
             onClick={() => handleManualAdd()}
           >
-            添加
+            Add
           </Button>
         </Space>
       </Modal>
 
       <Modal
-        title={`远程模型 · ${provider?.name ?? ""}`}
+        title={`Remote Models · ${provider?.name ?? ""}`}
         open={manageModalOpen}
         onCancel={() => {
           setManageModalOpen(false);
@@ -431,13 +431,13 @@ export default function Models() {
         }}
         width={720}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
-        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Input
               prefix={<SearchOutlined />}
-              placeholder="搜索模型名"
+              placeholder="Search model name"
               value={remoteSearch}
               onChange={(e) => setRemoteSearch(e.target.value)}
               allowClear
@@ -448,15 +448,15 @@ export default function Models() {
               onClick={() => void loadRemote()}
               loading={loadingRemote}
             >
-              重新拉取
+              Refresh
             </Button>
           </div>
           {fetchError && (
-            <Alert type="error" message={fetchError} showIcon closable onClose={() => setFetchError(null)} />
+            <Alert type="error" title={fetchError} showIcon closable onClose={() => setFetchError(null)} />
           )}
           {loadingRemote && remoteModels.length === 0 ? (
             <div style={{ textAlign: "center", padding: 40 }}>
-              <Spin tip="正在从上游获取模型列表…" />
+              <Spin description="Fetching remote models from upstream..." />
             </div>
           ) : (
             <Table
@@ -465,7 +465,7 @@ export default function Models() {
               columns={remoteColumns}
               dataSource={filteredRemote}
               pagination={{ pageSize: 12, showSizeChanger: false }}
-              locale={{ emptyText: "无远程模型或未匹配搜索" }}
+              locale={{ emptyText: "No remote models or no matches found" }}
             />
           )}
         </Space>

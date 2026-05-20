@@ -96,11 +96,11 @@ export default function Chat() {
   const addImages = useCallback(async (files: File[]) => {
     const valid = files.filter((f) => {
       if (!ACCEPTED_TYPES.includes(f.type)) {
-        message.warning(`不支持的图片格式: ${f.name}`);
+        message.warning(`Unsupported image format: ${f.name}`);
         return false;
       }
       if (f.size > MAX_IMAGE_SIZE) {
-        message.warning(`图片过大: ${f.name} (最大 20MB)`);
+        message.warning(`Image too large: ${f.name} (max 20MB)`);
         return false;
       }
       return true;
@@ -156,7 +156,7 @@ export default function Chat() {
       const withKey = list.find((a) => a.secretKey);
       if (withKey) setSelectedApp(withKey.id);
     } catch {
-      message.error("加载 Apps 失败");
+      message.error("Failed to load Apps");
     }
   }, []);
 
@@ -173,7 +173,7 @@ export default function Chat() {
         setSelectedModel(list[0].id);
       }
     } catch {
-      message.error("加载模型列表失败");
+      message.error("Failed to load model list");
       setModels([]);
     }
   }, [selectedModel]);
@@ -295,7 +295,7 @@ export default function Chat() {
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       message.error(
-        "请求失败: " + ((err as Error).message || "Unknown error")
+        "Request failed: " + ((err as Error).message || "Unknown error")
       );
       setMessages((prev) => {
         const next = [...prev];
@@ -359,24 +359,24 @@ export default function Chat() {
           Chat
         </Typography.Title>
         <Select
-          placeholder="选择 App"
+          placeholder="Select App"
           value={selectedApp}
           onChange={setSelectedApp}
           style={{ width: 180 }}
           options={apps
             .filter((a) => a.secretKey)
             .map((a) => ({ label: a.name, value: a.id }))}
-          notFoundContent="无可用 App"
+          notFoundContent="No available App"
         />
         <Select
-          placeholder="选择模型"
+          placeholder="Select Model"
           value={selectedModel}
           onChange={setSelectedModel}
           style={{ width: 300 }}
           showSearch
           optionFilterProp="label"
           options={models.map((m) => ({ label: m.id, value: m.id }))}
-          notFoundContent={selectedAppKey ? "无可用模型" : "请先选择 App"}
+          notFoundContent={selectedAppKey ? "No available Model" : "Please select an App"}
         />
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <BulbOutlined style={{ color: thinkingEnabled ? "#faad14" : undefined }} />
@@ -386,7 +386,7 @@ export default function Chat() {
             onChange={setThinkingEnabled}
           />
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            思考
+            Thinking
           </Typography.Text>
         </div>
         <Button
@@ -394,13 +394,13 @@ export default function Chat() {
           onClick={handleClear}
           disabled={messages.length === 0}
         >
-          清空
+          Clear
         </Button>
       </div>
 
       {noKey && (
         <div style={{ padding: 40, textAlign: "center" }}>
-          <Empty description="请先在 Apps 页面生成一个 Secret Key" />
+          <Empty description="Please generate a Secret Key in the Apps page" />
         </div>
       )}
 
@@ -424,7 +424,7 @@ export default function Chat() {
             }}
           >
             <Typography.Text type="secondary" style={{ fontSize: 16 }}>
-              选择模型，开始对话
+              Select a model, start conversation
             </Typography.Text>
           </div>
         ) : (
@@ -465,7 +465,7 @@ export default function Chat() {
                     }}
                   >
                     <summary style={{ cursor: "pointer", color: "#faad14", fontWeight: 500, userSelect: "none" }}>
-                      思考过程
+                      Thinking Process
                     </summary>
                     <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>
                       {msg.reasoningContent}
@@ -559,8 +559,8 @@ export default function Chat() {
             onPaste={handlePaste}
             placeholder={
               selectedModel
-                ? "输入消息，Enter 发送，Shift+Enter 换行，可粘贴/拖拽图片"
-                : "请先选择模型"
+                ? "Enter message, Shift+Enter to newline, paste/drag images"
+                : "Please select a model"
             }
             disabled={!selectedModel || !selectedAppKey}
             autoSize={{ minRows: 1, maxRows: 4 }}
@@ -572,7 +572,7 @@ export default function Chat() {
               onClick={handleStop}
               style={{ height: "auto", borderRadius: 8, flexShrink: 0 }}
             >
-              停止
+              Stop
             </Button>
           ) : (
             <Button
@@ -582,7 +582,7 @@ export default function Chat() {
               disabled={(!input.trim() && pendingImages.length === 0) || !selectedModel || !selectedAppKey}
               style={{ height: "auto", borderRadius: 8, flexShrink: 0 }}
             >
-              发送
+              Send
             </Button>
           )}
         </div>

@@ -40,7 +40,7 @@ export default function ProviderForm({ open, editing, onCancel, onOk, loading }:
       afterOpenChange={(visible) => { if (visible) handleOpen(); }}
       onOk={() => form.submit()}
       confirmLoading={loading}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}

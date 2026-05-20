@@ -1,7 +1,7 @@
 export function RouteProgress({ active }: { active: boolean }) {
   if (!active) return null;
   return (
-    <div className="route-progress" role="progressbar" aria-label="页面加载中">
+    <div className="route-progress" role="progressbar" aria-label="Loading...">
       <div className="route-progress-bar" />
     </div>
   );
@@ -10,7 +10,7 @@ export function RouteProgress({ active }: { active: boolean }) {
 /** 路由懒加载时的内容区骨架屏 */
 export function PageFallback() {
   return (
-    <div className="page-fallback" aria-busy="true" aria-label="加载中">
+    <div className="page-fallback" aria-busy="true" aria-label="Loading...">
       <div className="page-fallback-toolbar">
         <div className="skeleton-block skeleton-title" />
         <div className="skeleton-block skeleton-btn" />

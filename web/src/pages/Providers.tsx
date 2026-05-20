@@ -36,7 +36,7 @@ function EndpointList() {
     e.stopPropagation();
     navigator.clipboard.writeText(url).then(() => {
       setCopied(url);
-      message.success("已复制到剪贴板");
+      message.success("Copied to clipboard");
       setTimeout(() => setCopied(null), 1500);
     });
   };
@@ -88,7 +88,7 @@ function EndpointList() {
               <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
                 {label}
               </Typography.Text>
-              <Tooltip title={isCopied ? "已复制!" : "复制地址"}>
+              <Tooltip title={isCopied ? "Copied!" : "Copy address"}>
                 <Button
                   type="text"
                   size="small"
@@ -235,7 +235,7 @@ export default function Providers() {
                   <Space size={4}>
                     <DatabaseOutlined style={{ color: "rgba(0,0,0,0.45)" }} />
                     <Typography.Text type="secondary">
-                      {p.enabledCount}/{p.modelCount} 已启用
+                      {p.enabledCount}/{p.modelCount} enabled
                     </Typography.Text>
                   </Space>
                   <Space size={4}>
