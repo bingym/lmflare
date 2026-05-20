@@ -1,16 +1,24 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+function isReactVendor(id: string): boolean {
+  return (
+    /node_modules\/react\//.test(id) ||
+    /node_modules\/react-dom\//.test(id) ||
+    /node_modules\/react-router-dom\//.test(id) ||
+    /node_modules\/react-router\//.test(id) ||
+    /node_modules\/scheduler\//.test(id)
+  )
+}
+
 export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          if (id.includes('node_modules/react-dom')) return 'react';
-          if (id.includes('node_modules/react/') || id.includes('node_modules/react-router')) return 'react';
-          if (id.includes('node_modules/antd') || id.includes('node_modules/@ant-design')) return 'antd';
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) return 'recharts';
+          if (isReactVendor(id)) return 'react'
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) return 'recharts'
         },
       },
     },

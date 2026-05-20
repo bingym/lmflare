@@ -16,15 +16,13 @@ import {
   Spin,
   Empty,
 } from "antd";
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  KeyOutlined,
-  CopyOutlined,
-  SyncOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
-} from "@ant-design/icons";
+import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
+import KeyOutlined from "@ant-design/icons/es/icons/KeyOutlined";
+import CopyOutlined from "@ant-design/icons/es/icons/CopyOutlined";
+import SyncOutlined from "@ant-design/icons/es/icons/SyncOutlined";
+import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
+import EyeInvisibleOutlined from "@ant-design/icons/es/icons/EyeInvisibleOutlined";
 import {
   listApps,
   createApp,

@@ -12,13 +12,11 @@ import {
   Row,
   Col,
 } from "antd";
-import {
-  SyncOutlined,
-  ThunderboltOutlined,
-  MessageOutlined,
-  CodeOutlined,
-  FileTextOutlined,
-} from "@ant-design/icons";
+import SyncOutlined from "@ant-design/icons/es/icons/SyncOutlined";
+import ThunderboltOutlined from "@ant-design/icons/es/icons/ThunderboltOutlined";
+import MessageOutlined from "@ant-design/icons/es/icons/MessageOutlined";
+import CodeOutlined from "@ant-design/icons/es/icons/CodeOutlined";
+import FileTextOutlined from "@ant-design/icons/es/icons/FileTextOutlined";
 import {
   AreaChart,
   Area,
@@ -183,10 +181,11 @@ function UsageAreaChart({ data, dimensions, valueKey, period, title, height = 26
                 fontSize: 13,
               }}
               labelFormatter={(v) => formatChartDate(String(v), period)}
-              formatter={(value: number, name: string) => [
-                value.toLocaleString(),
-                name.replace(new RegExp(`_${valueKey}$`), ""),
-              ]}
+              formatter={(value, name) => {
+                const num = typeof value === "number" ? value : Number(value ?? 0);
+                const label = String(name ?? "").replace(new RegExp(`_${valueKey}$`), "");
+                return [num.toLocaleString(), label];
+              }}
             />
             {dimensions.length > 1 && (
               <Legend

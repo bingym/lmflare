@@ -32,3 +32,183 @@ body {
 @keyframes blink {
   50% { opacity: 0; }
 }
+
+/* App shell (no antd Layout/Menu on critical path) */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-sider {
+  width: 200px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.app-brand-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.app-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s, color 0.2s;
+}
+
+.app-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.app-nav-item.active {
+  background: #e6f4ff;
+  color: #1677ff;
+}
+
+.app-nav-item .anticon {
+  font-size: 16px;
+}
+
+.app-content {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+  position: relative;
+}
+
+.app-content.is-loading {
+  pointer-events: none;
+}
+
+.app-nav-item.pending {
+  opacity: 0.7;
+}
+
+/* 顶部进度条（类似 GitHub / NProgress） */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 10000;
+  overflow: hidden;
+  background: rgba(22, 119, 255, 0.12);
+  pointer-events: none;
+}
+
+.route-progress-bar {
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, #1677ff, transparent);
+  animation: route-progress-slide 0.9s ease-in-out infinite;
+}
+
+@keyframes route-progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.route-outlet {
+  animation: route-fade-in 0.2s ease-out;
+}
+
+@keyframes route-fade-in {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* 路由懒加载骨架屏 */
+.page-fallback {
+  padding: 4px 0;
+  animation: route-fade-in 0.15s ease-out;
+}
+
+.page-fallback-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-fallback-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-fallback-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-block {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-title {
+  width: 140px;
+  height: 28px;
+}
+
+.skeleton-btn {
+  width: 100px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.skeleton-card {
+  height: 120px;
+}
+
+.skeleton-line {
+  height: 16px;
+}
+
+.skeleton-line.short {
+  width: 55%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

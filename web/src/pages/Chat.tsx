@@ -10,13 +10,11 @@ import {
   Empty,
   Image,
 } from "antd";
-import {
-  SendOutlined,
-  ClearOutlined,
-  BulbOutlined,
-  PictureOutlined,
-  CloseCircleFilled,
-} from "@ant-design/icons";
+import SendOutlined from "@ant-design/icons/es/icons/SendOutlined";
+import ClearOutlined from "@ant-design/icons/es/icons/ClearOutlined";
+import BulbOutlined from "@ant-design/icons/es/icons/BulbOutlined";
+import PictureOutlined from "@ant-design/icons/es/icons/PictureOutlined";
+import CloseCircleFilled from "@ant-design/icons/es/icons/CloseCircleFilled";
 import { listApps, type AppDTO } from "../services/api";
 
 interface ImageAttachment {

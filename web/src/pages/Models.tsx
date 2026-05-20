@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import { useRouteNavigate } from "../contexts/RouteTransition";
 import {
   Typography,
   Button,
@@ -17,13 +18,11 @@ import {
   Descriptions,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import {
-  ArrowLeftOutlined,
-  PlusOutlined,
-  MinusOutlined,
-  SearchOutlined,
-  SyncOutlined,
-} from "@ant-design/icons";
+import ArrowLeftOutlined from "@ant-design/icons/es/icons/ArrowLeftOutlined";
+import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import MinusOutlined from "@ant-design/icons/es/icons/MinusOutlined";
+import SearchOutlined from "@ant-design/icons/es/icons/SearchOutlined";
+import SyncOutlined from "@ant-design/icons/es/icons/SyncOutlined";
 import {
   listProviders,
   listModels,
@@ -51,7 +50,7 @@ function modelFamilyLetter(modelId: string): string {
 
 export default function Models() {
   const { id: providerId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { navigate } = useRouteNavigate();
 
   const [provider, setProvider] = useState<ProviderDTO | null>(null);
   const [localModels, setLocalModels] = useState<ModelDTO[]>([]);

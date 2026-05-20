@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouteNavigate } from "../contexts/RouteTransition";
+import { preloadRoute } from "../routes/lazyPages";
 import { Card, Button, Typography, Space, Tag, Row, Col, Popconfirm, message, Spin, Empty, Tooltip } from "antd";
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  DatabaseOutlined,
-  CopyOutlined,
-  ApiOutlined,
-} from "@ant-design/icons";
+import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
+import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
+import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
+import DatabaseOutlined from "@ant-design/icons/es/icons/DatabaseOutlined";
+import CopyOutlined from "@ant-design/icons/es/icons/CopyOutlined";
+import ApiOutlined from "@ant-design/icons/es/icons/ApiOutlined";
 import {
   listProviders,
   createProvider,
@@ -106,7 +105,7 @@ function EndpointList() {
 }
 
 export default function Providers() {
-  const navigate = useNavigate();
+  const { navigate } = useRouteNavigate();
   const [providers, setProviders] = useState<
     (ProviderDTO & { modelCount: number; enabledCount: number })[]
   >([]);
@@ -212,6 +211,8 @@ export default function Providers() {
               <Card
                 className="hoverable-card"
                 style={{ cursor: "pointer" }}
+                onMouseEnter={() => preloadRoute("models")}
+                onFocus={() => preloadRoute("models")}
                 onClick={() => navigate(`/providers/${p.id}/models`)}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
