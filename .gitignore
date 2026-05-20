@@ -4,3 +4,4 @@ node_modules/
 web/dist/
 *.log
 .pnpm-store/
+.DS_Store

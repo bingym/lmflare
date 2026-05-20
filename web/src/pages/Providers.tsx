@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Button, Typography, Space, Tag, Row, Col, Popconfirm, message, Spin, Empty } from "antd";
+import { Card, Button, Typography, Space, Tag, Row, Col, Popconfirm, message, Spin, Empty, Tooltip } from "antd";
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   DatabaseOutlined,
+  CopyOutlined,
+  ApiOutlined,
 } from "@ant-design/icons";
 import {
   listProviders,
@@ -16,6 +18,92 @@ import {
   type ProviderDTO,
 } from "../services/api";
 import ProviderForm from "../components/ProviderForm";
+
+const API_ENDPOINTS = [
+  { path: "/v1/chat/completions", label: "Chat Completions", method: "POST" },
+  { path: "/v1/responses", label: "Responses", method: "POST" },
+  { path: "/v1/messages", label: "Messages (Anthropic)", method: "POST" },
+] as const;
+
+function getBaseUrl(): string {
+  return window.location.origin;
+}
+
+function EndpointList() {
+  const base = getBaseUrl();
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const handleCopy = (url: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(url);
+      message.success("已复制到剪贴板");
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  return (
+    <Card
+      size="small"
+      style={{ marginBottom: 20, background: "#fafafa", border: "1px solid #f0f0f0" }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <ApiOutlined style={{ color: "#1677ff" }} />
+        <Typography.Text strong>API Endpoints</Typography.Text>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {API_ENDPOINTS.map(({ path, label, method }) => {
+          const url = `${base}${path}`;
+          const isCopied = copied === url;
+          return (
+            <div
+              key={path}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 10px",
+                borderRadius: 6,
+                background: "#fff",
+                border: "1px solid #f0f0f0",
+              }}
+            >
+              <Tag
+                color="blue"
+                style={{ margin: 0, fontSize: 11, lineHeight: "20px", fontFamily: "monospace" }}
+              >
+                {method}
+              </Tag>
+              <code
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  color: "rgba(0,0,0,0.75)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {url}
+              </code>
+              <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
+                {label}
+              </Typography.Text>
+              <Tooltip title={isCopied ? "已复制!" : "复制地址"}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CopyOutlined style={{ color: isCopied ? "#52c41a" : undefined }} />}
+                  onClick={(e) => handleCopy(url, e)}
+                />
+              </Tooltip>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 
 export default function Providers() {
   const navigate = useNavigate();
@@ -104,6 +192,8 @@ export default function Providers() {
           New Provider
         </Button>
       </div>
+
+      <EndpointList />
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 60 }}>
