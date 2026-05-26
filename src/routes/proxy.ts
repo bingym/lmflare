@@ -116,9 +116,9 @@ proxy.post("/chat/completions", async (c) => {
   const isStreaming = body.stream === true;
   const appId = c.get("appId" as never) as string;
 
-  const raw = target.providerType === "openai"
-    ? await proxyToOpenAI(target, "/v1/chat/completions", body, isStreaming)
-    : await openaiToAnthropic(target, body, isStreaming);
+  const raw = target.providerType === "anthropic"
+    ? await openaiToAnthropic(target, body, isStreaming)
+    : await proxyToOpenAI(target, "/v1/chat/completions", body, isStreaming);
 
   const { response, usage } = trackResponse(raw, isStreaming);
   logUsage(c.executionCtx, c.env.DB, appId, model, "chat/completions", usage);
@@ -138,7 +138,7 @@ proxy.post("/responses", async (c) => {
   const isStreaming = body.stream === true;
   const appId = c.get("appId" as never) as string;
 
-  if (target.providerType !== "openai") {
+  if (target.providerType === "anthropic") {
     return c.json(
       { error: "Responses API is not supported for Anthropic providers" },
       400

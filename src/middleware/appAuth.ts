@@ -1,6 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import type { Env } from "../types";
 import { lookupKey } from "../services/keyStore";
+import { getApp } from "../services/db";
 
 /**
  * Authenticates proxy requests using app secret keys.
@@ -26,6 +27,11 @@ export const appAuth = createMiddleware<{ Bindings: Env }>(async (c, next) => {
   const appId = await lookupKey(c.env.KV, key);
   if (!appId) {
     return c.json({ error: "Invalid API key" }, 401);
+  }
+
+  const app = await getApp(c.env.DB, appId);
+  if (!app || !app.enabled) {
+    return c.json({ error: "App is disabled" }, 403);
   }
 
   c.set("appId" as never, appId);

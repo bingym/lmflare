@@ -16,6 +16,8 @@ import {
   Switch,
   Table,
   Descriptions,
+  Card,
+  Tooltip,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import ArrowLeftOutlined from "@ant-design/icons/es/icons/ArrowLeftOutlined";
@@ -23,6 +25,8 @@ import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
 import MinusOutlined from "@ant-design/icons/es/icons/MinusOutlined";
 import SearchOutlined from "@ant-design/icons/es/icons/SearchOutlined";
 import SyncOutlined from "@ant-design/icons/es/icons/SyncOutlined";
+import CopyOutlined from "@ant-design/icons/es/icons/CopyOutlined";
+import ApiOutlined from "@ant-design/icons/es/icons/ApiOutlined";
 import {
   listProviders,
   listModels,
@@ -30,10 +34,14 @@ import {
   addModels,
   removeModel,
   setModelEnabled,
+  updateProvider,
   type ProviderDTO,
+  type ProviderType,
   type ModelDTO,
   type RemoteModelDTO,
 } from "../services/api";
+import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
+import ProviderForm from "../components/ProviderForm";
 
 function maskApiKey(key: string): string {
   if (!key || key.length <= 10) return "****";
@@ -63,6 +71,8 @@ export default function Models() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [manualName, setManualName] = useState("");
+  const [editFormOpen, setEditFormOpen] = useState(false);
+  const [editFormLoading, setEditFormLoading] = useState(false);
 
   const localModelIds = useMemo(
     () => new Set(localModels.map((m) => m.modelId)),
@@ -187,6 +197,27 @@ export default function Models() {
     });
   };
 
+  const handleEditProvider = async (values: {
+    name: string;
+    slug: string;
+    type: ProviderType;
+    endpoint: string;
+    apiKey: string;
+  }) => {
+    if (!provider) return;
+    setEditFormLoading(true);
+    try {
+      await updateProvider(provider.id, values);
+      message.success("Provider updated");
+      setEditFormOpen(false);
+      await loadProvider();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setEditFormLoading(false);
+    }
+  };
+
   const openManageModal = () => {
     setManageModalOpen(true);
     setRemoteSearch("");
@@ -196,7 +227,9 @@ export default function Models() {
   const typeLabel =
     provider?.type === "anthropic"
       ? "Anthropic / Messages"
-      : "OpenAI / Compatible Chat";
+      : provider?.type === "openai-responses"
+        ? "OpenAI / Responses"
+        : "OpenAI / Chat Completions";
 
   const remoteColumns: ColumnsType<RemoteModelDTO> = [
     {
@@ -256,6 +289,15 @@ export default function Models() {
           {provider?.name ?? "…"}
         </Typography.Title>
         <Space size={8}>
+          {provider && (
+            <Button
+              icon={<EditOutlined />}
+              size="small"
+              onClick={() => setEditFormOpen(true)}
+            >
+              Edit
+            </Button>
+          )}
           <Tag color="green">{typeLabel}</Tag>
           <Tag>{localModels.length} local models</Tag>
           <Tag color="blue">{enabledCount} enabled</Tag>
@@ -263,33 +305,95 @@ export default function Models() {
       </div>
 
       {provider && (
-        <Descriptions
-          bordered
-          size="small"
-          column={1}
-          style={{ marginBottom: 20 }}
-        >
-          <Descriptions.Item label="API Endpoint">
-            <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 13 }}>
-              {provider.endpoint.replace(/\/+$/, "")}
-            </Typography.Text>
-          </Descriptions.Item>
-          <Descriptions.Item label="API Preview">
-            <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 13 }}>
-              {provider.type === "anthropic"
-                ? `${provider.endpoint.replace(/\/+$/, "")}/v1/messages`
-                : `${provider.endpoint.replace(/\/+$/, "")}/v1/chat/completions`}
-            </Typography.Text>
-          </Descriptions.Item>
-          <Descriptions.Item label="API Key">
-            <Typography.Text
-              copyable={{ text: provider.apiKey }}
-              style={{ fontFamily: "monospace", fontSize: 13 }}
-            >
-              {maskApiKey(provider.apiKey)}
-            </Typography.Text>
-          </Descriptions.Item>
-        </Descriptions>
+        <>
+          <Card
+            size="small"
+            style={{ marginBottom: 16, background: "#fafafa", border: "1px solid #f0f0f0" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <ApiOutlined style={{ color: "#1677ff" }} />
+              <Typography.Text strong>API Endpoints</Typography.Text>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(provider.type === "anthropic"
+                ? [{ path: "/v1/messages", label: "Messages (Anthropic)", method: "POST" }]
+                : provider.type === "openai-responses"
+                  ? [{ path: "/v1/responses", label: "Responses", method: "POST" }]
+                  : [{ path: "/v1/chat/completions", label: "Chat Completions", method: "POST" }]
+              ).map(({ path, label, method }) => {
+                const url = `${window.location.origin}${path}`;
+                return (
+                  <div
+                    key={path}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      background: "#fff",
+                      border: "1px solid #f0f0f0",
+                    }}
+                  >
+                    <Tag
+                      color="blue"
+                      style={{ margin: 0, fontSize: 11, lineHeight: "20px", fontFamily: "monospace" }}
+                    >
+                      {method}
+                    </Tag>
+                    <code
+                      style={{
+                        flex: 1,
+                        fontSize: 13,
+                        color: "rgba(0,0,0,0.75)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {url}
+                    </code>
+                    <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
+                      {label}
+                    </Typography.Text>
+                    <Tooltip title="Copy">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(url);
+                          message.success("Copied to clipboard");
+                        }}
+                      />
+                    </Tooltip>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Descriptions
+            bordered
+            size="small"
+            column={1}
+            style={{ marginBottom: 20 }}
+          >
+            <Descriptions.Item label="Upstream Endpoint">
+              <Typography.Text copyable style={{ fontFamily: "monospace", fontSize: 13 }}>
+                {provider.endpoint.replace(/\/+$/, "")}
+              </Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="API Key">
+              <Typography.Text
+                copyable={{ text: provider.apiKey }}
+                style={{ fontFamily: "monospace", fontSize: 13 }}
+              >
+                {maskApiKey(provider.apiKey)}
+              </Typography.Text>
+            </Descriptions.Item>
+          </Descriptions>
+        </>
       )}
 
       <div
@@ -421,6 +525,16 @@ export default function Models() {
           </Button>
         </Space>
       </Modal>
+
+      {provider && (
+        <ProviderForm
+          open={editFormOpen}
+          editing={provider}
+          onCancel={() => setEditFormOpen(false)}
+          onOk={handleEditProvider}
+          loading={editFormLoading}
+        />
+      )}
 
       <Modal
         title={`Remote Models · ${provider?.name ?? ""}`}

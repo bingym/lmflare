@@ -6,6 +6,7 @@ import {
   Table,
   Spin,
   Button,
+  Select,
   message,
   Card,
   Statistic,
@@ -27,7 +28,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { fetchUsage, type UsageRowDTO } from "../services/api";
+import { fetchUsage, listApps, type UsageRowDTO, type AppDTO } from "../services/api";
 import dayjs, { type Dayjs } from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -179,6 +180,8 @@ function UsageAreaChart({ data, dimensions, valueKey, period, title, height = 26
                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
                 padding: "10px 14px",
                 fontSize: 13,
+                background: "#fff",
+                opacity: 1,
               }}
               labelFormatter={(v) => formatChartDate(String(v), period)}
               formatter={(value, name) => {
@@ -220,11 +223,17 @@ export default function Usage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("model");
   const [period, setPeriod] = useState<Period>("day");
   const [range, setRange] = useState<[Dayjs, Dayjs]>([
-    dayjs().subtract(30, "day"),
+    dayjs(),
     dayjs(),
   ]);
+  const [selectedApp, setSelectedApp] = useState<string | undefined>();
+  const [apps, setApps] = useState<AppDTO[]>([]);
   const [rows, setRows] = useState<UsageRowDTO[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    listApps().then(setApps).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,6 +243,7 @@ export default function Usage() {
         period,
         start: range[0].format("YYYY-MM-DD"),
         end: range[1].add(1, "day").format("YYYY-MM-DD"),
+        appId: selectedApp,
       });
       setRows(data);
     } catch {
@@ -241,7 +251,7 @@ export default function Usage() {
     } finally {
       setLoading(false);
     }
-  }, [groupBy, period, range]);
+  }, [groupBy, period, range, selectedApp]);
 
   useEffect(() => {
     void load();
@@ -397,6 +407,15 @@ export default function Usage() {
               { label: "Week", value: "week" },
               { label: "Month", value: "month" },
             ]}
+          />
+          <Select
+            placeholder="All Apps"
+            value={selectedApp}
+            onChange={setSelectedApp}
+            allowClear
+            style={{ minWidth: 160 }}
+            size="small"
+            options={apps.map((a) => ({ label: a.name, value: a.id }))}
           />
           <RangePicker
             size="small"

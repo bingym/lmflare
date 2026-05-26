@@ -1,5 +1,5 @@
 import { Form, Input, Select, Modal } from "antd";
-import type { ProviderDTO } from "../services/api";
+import type { ProviderDTO, ProviderType } from "../services/api";
 
 interface Props {
   open: boolean;
@@ -8,7 +8,7 @@ interface Props {
   onOk: (values: {
     name: string;
     slug: string;
-    type: "openai" | "anthropic";
+    type: ProviderType;
     endpoint: string;
     apiKey: string;
   }) => Promise<void>;
@@ -75,6 +75,7 @@ export default function ProviderForm({ open, editing, onCancel, onOk, loading }:
             placeholder="Select API type"
             options={[
               { value: "openai", label: "OpenAI Compatible" },
+              { value: "openai-responses", label: "OpenAI Responses" },
               { value: "anthropic", label: "Anthropic" },
             ]}
           />

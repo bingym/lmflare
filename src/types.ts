@@ -1,8 +1,10 @@
+export type ProviderType = "openai" | "openai-responses" | "anthropic";
+
 export interface Provider {
   id: string;
   name: string;
   slug: string;
-  type: "openai" | "anthropic";
+  type: ProviderType;
   endpoint: string;
   apiKey: string;
   createdAt: string;
@@ -20,6 +22,7 @@ export interface Model {
 export interface App {
   id: string;
   name: string;
+  enabled: boolean;
   secretKey: string | null;
   keyCreatedAt: string | null;
   createdAt: string;

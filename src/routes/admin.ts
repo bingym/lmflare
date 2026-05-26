@@ -15,6 +15,7 @@ import {
   getApp,
   createApp,
   updateAppKey,
+  updateAppEnabled,
   deleteApp,
   queryUsage,
 } from "../services/db";
@@ -32,7 +33,7 @@ admin.post("/providers", async (c) => {
   const body = await c.req.json<{
     name: string;
     slug: string;
-    type: "openai" | "anthropic";
+    type: "openai" | "openai-responses" | "anthropic";
     endpoint: string;
     apiKey: string;
   }>();
@@ -46,7 +47,7 @@ admin.put("/providers/:id", async (c) => {
   const body = await c.req.json<{
     name?: string;
     slug?: string;
-    type?: "openai" | "anthropic";
+    type?: "openai" | "openai-responses" | "anthropic";
     endpoint?: string;
     apiKey?: string;
   }>();
@@ -158,6 +159,18 @@ admin.post("/apps", async (c) => {
   const id = crypto.randomUUID();
   const app = await createApp(c.env.DB, { id, name: body.name });
   return c.json(app, 201);
+});
+
+admin.patch("/apps/:id", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json<{ enabled?: boolean }>();
+  if (typeof body.enabled !== "boolean") {
+    return c.json({ error: "enabled (boolean) is required" }, 400);
+  }
+  const ok = await updateAppEnabled(c.env.DB, id, body.enabled);
+  if (!ok) return c.json({ error: "App not found" }, 404);
+  const updated = await getApp(c.env.DB, id);
+  return c.json(updated);
 });
 
 admin.delete("/apps/:id", async (c) => {

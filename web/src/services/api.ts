@@ -23,11 +23,13 @@ async function request<T>(
 }
 
 // --- Providers ---
+export type ProviderType = "openai" | "openai-responses" | "anthropic";
+
 export interface ProviderDTO {
   id: string;
   name: string;
   slug: string;
-  type: "openai" | "anthropic";
+  type: ProviderType;
   endpoint: string;
   apiKey: string;
   createdAt: string;
@@ -41,7 +43,7 @@ export async function listProviders(): Promise<ProviderDTO[]> {
 export async function createProvider(data: {
   name: string;
   slug: string;
-  type: "openai" | "anthropic";
+  type: ProviderType;
   endpoint: string;
   apiKey: string;
 }): Promise<ProviderDTO> {
@@ -56,7 +58,7 @@ export async function updateProvider(
   data: Partial<{
     name: string;
     slug: string;
-    type: "openai" | "anthropic";
+    type: ProviderType;
     endpoint: string;
     apiKey: string;
   }>
@@ -129,6 +131,7 @@ export async function setModelEnabled(
 export interface AppDTO {
   id: string;
   name: string;
+  enabled: boolean;
   secretKey: string | null;
   keyCreatedAt: string | null;
   createdAt: string;
@@ -142,6 +145,13 @@ export async function createApp(name: string): Promise<AppDTO> {
   return request("/apps", {
     method: "POST",
     body: JSON.stringify({ name }),
+  });
+}
+
+export async function updateAppEnabled(id: string, enabled: boolean): Promise<AppDTO> {
+  return request(`/apps/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ enabled }),
   });
 }
 

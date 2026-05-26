@@ -12,6 +12,9 @@ import {
   Space,
   Tag,
   Tooltip,
+  Switch,
+  Table,
+  Segmented,
   message,
   Spin,
   Empty,
@@ -23,13 +26,21 @@ import CopyOutlined from "@ant-design/icons/es/icons/CopyOutlined";
 import SyncOutlined from "@ant-design/icons/es/icons/SyncOutlined";
 import EyeOutlined from "@ant-design/icons/es/icons/EyeOutlined";
 import EyeInvisibleOutlined from "@ant-design/icons/es/icons/EyeInvisibleOutlined";
+import CheckCircleOutlined from "@ant-design/icons/es/icons/CheckCircleOutlined";
+import StopOutlined from "@ant-design/icons/es/icons/StopOutlined";
+import AppstoreOutlined from "@ant-design/icons/es/icons/AppstoreOutlined";
+import UnorderedListOutlined from "@ant-design/icons/es/icons/UnorderedListOutlined";
 import {
   listApps,
   createApp,
   deleteApp,
   rotateKey,
+  updateAppEnabled,
   type AppDTO,
 } from "../services/api";
+
+type ViewMode = "card" | "list";
+const LS_KEY = "lmflare-apps-view";
 
 function SecretKeyDisplay({ secretKey }: { secretKey: string }) {
   const [visible, setVisible] = useState(false);
@@ -68,6 +79,14 @@ export default function Apps() {
   const [createLoading, setCreateLoading] = useState(false);
   const [rotatingIds, setRotatingIds] = useState<Set<string>>(new Set());
   const [form] = Form.useForm();
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    () => (localStorage.getItem(LS_KEY) as ViewMode) || "card"
+  );
+
+  const handleViewChange = (v: ViewMode) => {
+    setViewMode(v);
+    localStorage.setItem(LS_KEY, v);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,6 +126,16 @@ export default function Apps() {
     }
   };
 
+  const handleToggleEnabled = async (id: string, enabled: boolean) => {
+    try {
+      const updated = await updateAppEnabled(id, enabled);
+      setApps((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      message.success(enabled ? "App enabled" : "App disabled");
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "Failed to update");
+    }
+  };
+
   const handleRotate = async (id: string) => {
     setRotatingIds((prev) => new Set(prev).add(id));
     try {
@@ -124,15 +153,89 @@ export default function Apps() {
     }
   };
 
+  const listColumns = [
+    {
+      title: "Name",
+      key: "name",
+      render: (_: unknown, app: AppDTO) => (
+        <div>
+          <Typography.Text strong>{app.name}</Typography.Text>
+          <div>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+              Created {new Date(app.createdAt).toLocaleDateString()}
+            </Typography.Text>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Status",
+      key: "status",
+      width: 100,
+      render: (_: unknown, app: AppDTO) => (
+        <Switch
+          size="small"
+          checked={app.enabled}
+          onChange={(v) => handleToggleEnabled(app.id, v)}
+        />
+      ),
+    },
+    {
+      title: "Secret Key",
+      key: "key",
+      render: (_: unknown, app: AppDTO) =>
+        app.secretKey ? (
+          <SecretKeyDisplay secretKey={app.secretKey} />
+        ) : (
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>—</Typography.Text>
+        ),
+    },
+    {
+      title: "",
+      key: "actions",
+      width: 180,
+      render: (_: unknown, app: AppDTO) => (
+        <Space size={4}>
+          <Button
+            icon={app.secretKey ? <SyncOutlined /> : <KeyOutlined />}
+            size="small"
+            loading={rotatingIds.has(app.id)}
+            onClick={() => handleRotate(app.id)}
+          >
+            {app.secretKey ? "Rotate" : "Generate"}
+          </Button>
+          <Popconfirm
+            title="Delete this app?"
+            description="The associated key will also be invalidated."
+            onConfirm={() => handleDelete(app.id)}
+          >
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>
           Apps
         </Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-          New App
-        </Button>
+        <Space size={8}>
+          <Segmented
+            size="small"
+            value={viewMode}
+            onChange={(v) => handleViewChange(v as ViewMode)}
+            options={[
+              { value: "card", icon: <AppstoreOutlined /> },
+              { value: "list", icon: <UnorderedListOutlined /> },
+            ]}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+            New App
+          </Button>
+        </Space>
       </div>
 
       {loading ? (
@@ -145,6 +248,14 @@ export default function Apps() {
             Create your first app
           </Button>
         </Empty>
+      ) : viewMode === "list" ? (
+        <Table
+          dataSource={apps}
+          columns={listColumns}
+          rowKey="id"
+          size="small"
+          pagination={false}
+        />
       ) : (
         <Row gutter={[16, 16]}>
           {apps.map((app) => (
@@ -159,9 +270,14 @@ export default function Apps() {
                       Created {new Date(app.createdAt).toLocaleDateString()}
                     </Typography.Text>
                   </div>
-                  <Tag color={app.secretKey ? "green" : "default"}>
-                    {app.secretKey ? "Active" : "No Key"}
-                  </Tag>
+                  <Space size={4}>
+                    <Tag
+                      icon={app.enabled ? <CheckCircleOutlined /> : <StopOutlined />}
+                      color={app.enabled ? "green" : "default"}
+                    >
+                      {app.enabled ? "Enabled" : "Disabled"}
+                    </Tag>
+                  </Space>
                 </div>
 
                 <div style={{ marginTop: 16 }}>
@@ -183,15 +299,24 @@ export default function Apps() {
                   )}
                 </div>
 
-                <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between" }}>
-                  <Button
-                    icon={app.secretKey ? <SyncOutlined /> : <KeyOutlined />}
-                    size="small"
-                    loading={rotatingIds.has(app.id)}
-                    onClick={() => handleRotate(app.id)}
-                  >
-                    {app.secretKey ? "Rotate Key" : "Generate Key"}
-                  </Button>
+                <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Space size={8}>
+                    <Tooltip title={app.enabled ? "Disable" : "Enable"}>
+                      <Switch
+                        size="small"
+                        checked={app.enabled}
+                        onChange={(checked) => handleToggleEnabled(app.id, checked)}
+                      />
+                    </Tooltip>
+                    <Button
+                      icon={app.secretKey ? <SyncOutlined /> : <KeyOutlined />}
+                      size="small"
+                      loading={rotatingIds.has(app.id)}
+                      onClick={() => handleRotate(app.id)}
+                    >
+                      {app.secretKey ? "Rotate Key" : "Generate Key"}
+                    </Button>
+                  </Space>
                   <Popconfirm
                     title="Delete this app?"
                     description="The associated key will also be invalidated."

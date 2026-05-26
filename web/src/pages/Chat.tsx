@@ -153,7 +153,7 @@ export default function Chat() {
     try {
       const list = await listApps();
       setApps(list);
-      const withKey = list.find((a) => a.secretKey);
+      const withKey = list.find((a) => a.secretKey && a.enabled);
       if (withKey) setSelectedApp(withKey.id);
     } catch {
       message.error("Failed to load Apps");
@@ -364,7 +364,7 @@ export default function Chat() {
           onChange={setSelectedApp}
           style={{ width: 180 }}
           options={apps
-            .filter((a) => a.secretKey)
+            .filter((a) => a.secretKey && a.enabled)
             .map((a) => ({ label: a.name, value: a.id }))}
           notFoundContent="No available App"
         />
@@ -375,7 +375,18 @@ export default function Chat() {
           style={{ width: 300 }}
           showSearch
           optionFilterProp="label"
-          options={models.map((m) => ({ label: m.id, value: m.id }))}
+          options={(() => {
+            const groups = new Map<string, ModelItem[]>();
+            for (const m of models) {
+              const key = m.owned_by || "Other";
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(m);
+            }
+            return Array.from(groups.entries()).map(([group, items]) => ({
+              label: group,
+              options: items.map((m) => ({ label: m.id, value: m.id })),
+            }));
+          })()}
           notFoundContent={selectedAppKey ? "No available Model" : "Please select an App"}
         />
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>

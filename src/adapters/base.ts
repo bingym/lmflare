@@ -1,7 +1,7 @@
 export interface ProxyTarget {
   endpoint: string;
   apiKey: string;
-  providerType: "openai" | "anthropic";
+  providerType: "openai" | "openai-responses" | "anthropic";
   modelId: string;
 }
 

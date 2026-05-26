@@ -5,7 +5,7 @@ function rowToProvider(row: Record<string, unknown>): Provider {
     id: row.id as string,
     name: row.name as string,
     slug: row.slug as string,
-    type: row.type as "openai" | "anthropic",
+    type: row.type as "openai" | "openai-responses" | "anthropic",
     endpoint: row.endpoint as string,
     apiKey: row.api_key as string,
     createdAt: row.created_at as string,
@@ -25,9 +25,11 @@ function rowToModel(row: Record<string, unknown>): Model {
 }
 
 function rowToApp(row: Record<string, unknown>): App {
+  const en = row.enabled;
   return {
     id: row.id as string,
     name: row.name as string,
+    enabled: en === undefined || en === null ? true : Number(en) === 1,
     secretKey: (row.secret_key as string) ?? null,
     keyCreatedAt: (row.key_created_at as string) ?? null,
     createdAt: row.created_at as string,
@@ -188,10 +190,10 @@ export async function getEnabledProxyModel(
   modelId: string
 ): Promise<{
   endpoint: string;
-  apiKey: string;
-  type: "openai" | "anthropic";
-  modelId: string;
-} | null> {
+    apiKey: string;
+    type: "openai" | "openai-responses" | "anthropic";
+    modelId: string;
+  } | null> {
   const row = await db
     .prepare(
       `SELECT p.endpoint AS endpoint, p.api_key AS api_key, p.type AS type
@@ -205,7 +207,7 @@ export async function getEnabledProxyModel(
   return {
     endpoint: row.endpoint as string,
     apiKey: row.api_key as string,
-    type: row.type as "openai" | "anthropic",
+    type: row.type as "openai" | "openai-responses" | "anthropic",
     modelId,
   };
 }
@@ -256,7 +258,7 @@ export async function createApp(
     )
     .bind(app.id, app.name, now)
     .run();
-  return { id: app.id, name: app.name, secretKey: null, keyCreatedAt: null, createdAt: now };
+  return { id: app.id, name: app.name, enabled: true, secretKey: null, keyCreatedAt: null, createdAt: now };
 }
 
 export async function updateAppKey(
@@ -269,6 +271,18 @@ export async function updateAppKey(
     .prepare("UPDATE apps SET secret_key = ?, key_created_at = ? WHERE id = ?")
     .bind(secretKey, keyCreatedAt, id)
     .run();
+}
+
+export async function updateAppEnabled(
+  db: D1Database,
+  id: string,
+  enabled: boolean
+): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE apps SET enabled = ? WHERE id = ?")
+    .bind(enabled ? 1 : 0, id)
+    .run();
+  return (r.meta.changes ?? 0) > 0;
 }
 
 export async function deleteApp(
@@ -343,6 +357,10 @@ export async function queryUsage(
     conditions.push("u.model = ?");
     binds.push(params.model);
   }
+
+  conditions.push(
+    "EXISTS (SELECT 1 FROM models m JOIN providers p ON m.provider_id = p.id WHERE (p.slug || '/' || m.model_id) = u.model)"
+  );
 
   const joinApps = params.groupBy === "app"
     ? "LEFT JOIN apps a ON u.app_id = a.id"

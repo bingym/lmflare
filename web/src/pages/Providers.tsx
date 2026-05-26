@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouteNavigate } from "../contexts/RouteTransition";
 import { preloadRoute } from "../routes/lazyPages";
-import { Card, Button, Typography, Space, Tag, Row, Col, Popconfirm, message, Spin, Empty, Tooltip } from "antd";
+import { Card, Button, Typography, Space, Tag, Row, Col, Popconfirm, message, Spin, Empty, Table, Segmented } from "antd";
 import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
 import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
 import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
 import DatabaseOutlined from "@ant-design/icons/es/icons/DatabaseOutlined";
-import CopyOutlined from "@ant-design/icons/es/icons/CopyOutlined";
-import ApiOutlined from "@ant-design/icons/es/icons/ApiOutlined";
+import AppstoreOutlined from "@ant-design/icons/es/icons/AppstoreOutlined";
+import UnorderedListOutlined from "@ant-design/icons/es/icons/UnorderedListOutlined";
 import {
   listProviders,
   createProvider,
@@ -15,93 +15,20 @@ import {
   deleteProvider,
   listModels,
   type ProviderDTO,
+  type ProviderType,
 } from "../services/api";
 import ProviderForm from "../components/ProviderForm";
 
-const API_ENDPOINTS = [
-  { path: "/v1/chat/completions", label: "Chat Completions", method: "POST" },
-  { path: "/v1/responses", label: "Responses", method: "POST" },
-  { path: "/v1/messages", label: "Messages (Anthropic)", method: "POST" },
-] as const;
+type ViewMode = "card" | "list";
+const LS_KEY = "lmflare-providers-view";
 
-function getBaseUrl(): string {
-  return window.location.origin;
-}
-
-function EndpointList() {
-  const base = getBaseUrl();
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const handleCopy = (url: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(url);
-      message.success("Copied to clipboard");
-      setTimeout(() => setCopied(null), 1500);
-    });
-  };
-
-  return (
-    <Card
-      size="small"
-      style={{ marginBottom: 20, background: "#fafafa", border: "1px solid #f0f0f0" }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <ApiOutlined style={{ color: "#1677ff" }} />
-        <Typography.Text strong>API Endpoints</Typography.Text>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {API_ENDPOINTS.map(({ path, label, method }) => {
-          const url = `${base}${path}`;
-          const isCopied = copied === url;
-          return (
-            <div
-              key={path}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 10px",
-                borderRadius: 6,
-                background: "#fff",
-                border: "1px solid #f0f0f0",
-              }}
-            >
-              <Tag
-                color="blue"
-                style={{ margin: 0, fontSize: 11, lineHeight: "20px", fontFamily: "monospace" }}
-              >
-                {method}
-              </Tag>
-              <code
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  color: "rgba(0,0,0,0.75)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {url}
-              </code>
-              <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-                {label}
-              </Typography.Text>
-              <Tooltip title={isCopied ? "Copied!" : "Copy address"}>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CopyOutlined style={{ color: isCopied ? "#52c41a" : undefined }} />}
-                  onClick={(e) => handleCopy(url, e)}
-                />
-              </Tooltip>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
+function typeTag(type: ProviderType) {
+  switch (type) {
+    case "openai": return <Tag color="blue">OpenAI</Tag>;
+    case "openai-responses": return <Tag color="geekblue">OpenAI Responses</Tag>;
+    case "anthropic": return <Tag color="orange">Anthropic</Tag>;
+    default: return <Tag>{type}</Tag>;
+  }
 }
 
 export default function Providers() {
@@ -113,6 +40,14 @@ export default function Providers() {
   const [formOpen, setFormOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editing, setEditing] = useState<ProviderDTO | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    () => (localStorage.getItem(LS_KEY) as ViewMode) || "card"
+  );
+
+  const handleViewChange = (v: ViewMode) => {
+    setViewMode(v);
+    localStorage.setItem(LS_KEY, v);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,7 +84,7 @@ export default function Providers() {
   const handleFormOk = async (values: {
     name: string;
     slug: string;
-    type: "openai" | "anthropic";
+    type: ProviderType;
     endpoint: string;
     apiKey: string;
   }) => {
@@ -181,18 +116,97 @@ export default function Providers() {
     }
   };
 
+  const listColumns = [
+    {
+      title: "Name",
+      key: "name",
+      render: (_: unknown, p: (typeof providers)[0]) => (
+        <div>
+          <Typography.Text strong>{p.name}</Typography.Text>
+          <div><Typography.Text type="secondary" style={{ fontSize: 12 }}>{p.slug}</Typography.Text></div>
+        </div>
+      ),
+    },
+    {
+      title: "Type",
+      dataIndex: "type",
+      key: "type",
+      width: 160,
+      render: (t: ProviderType) => typeTag(t),
+    },
+    {
+      title: "Endpoint",
+      dataIndex: "endpoint",
+      key: "endpoint",
+      ellipsis: true,
+      render: (v: string) => (
+        <Typography.Text type="secondary" style={{ fontSize: 13 }}>{v}</Typography.Text>
+      ),
+    },
+    {
+      title: "Models",
+      key: "models",
+      width: 130,
+      render: (_: unknown, p: (typeof providers)[0]) => (
+        <Space size={4}>
+          <DatabaseOutlined style={{ color: "rgba(0,0,0,0.45)" }} />
+          <Typography.Text type="secondary">{p.enabledCount}/{p.modelCount}</Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: "",
+      key: "actions",
+      width: 80,
+      render: (_: unknown, p: (typeof providers)[0]) => (
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={(e) => handleEdit(p, e)}
+          />
+          <Popconfirm
+            title="Delete this provider?"
+            description="All associated models will also be removed."
+            onConfirm={() => handleDelete(p.id)}
+            onCancel={(e) => e?.stopPropagation()}
+            onPopupClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>
           Providers
         </Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          New Provider
-        </Button>
+        <Space size={8}>
+          <Segmented
+            size="small"
+            value={viewMode}
+            onChange={(v) => handleViewChange(v as ViewMode)}
+            options={[
+              { value: "card", icon: <AppstoreOutlined /> },
+              { value: "list", icon: <UnorderedListOutlined /> },
+            ]}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            New Provider
+          </Button>
+        </Space>
       </div>
-
-      <EndpointList />
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 60 }}>
@@ -204,6 +218,22 @@ export default function Providers() {
             Create your first provider
           </Button>
         </Empty>
+      ) : viewMode === "list" ? (
+        <Table
+          dataSource={providers}
+          columns={listColumns}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          onRow={(p) => ({
+            style: { cursor: "pointer" },
+            onClick: (e) => {
+              if ((e.target as HTMLElement).closest("button, .ant-popover, .ant-btn")) return;
+              navigate(`/providers/${p.id}/models`);
+            },
+            onMouseEnter: () => preloadRoute("models"),
+          })}
+        />
       ) : (
         <Row gutter={[16, 16]}>
           {providers.map((p) => (
@@ -224,9 +254,7 @@ export default function Providers() {
                       {p.slug}
                     </Typography.Text>
                   </div>
-                  <Tag color={p.type === "openai" ? "blue" : "orange"}>
-                    {p.type === "openai" ? "OpenAI" : "Anthropic"}
-                  </Tag>
+                  {typeTag(p.type)}
                 </div>
                 <div style={{ marginTop: 12, color: "rgba(0,0,0,0.45)", fontSize: 13 }}>
                   {p.endpoint}
