@@ -21,6 +21,7 @@ import {
 } from "antd";
 import PlusOutlined from "@ant-design/icons/es/icons/PlusOutlined";
 import DeleteOutlined from "@ant-design/icons/es/icons/DeleteOutlined";
+import EditOutlined from "@ant-design/icons/es/icons/EditOutlined";
 import KeyOutlined from "@ant-design/icons/es/icons/KeyOutlined";
 import CopyOutlined from "@ant-design/icons/es/icons/CopyOutlined";
 import SyncOutlined from "@ant-design/icons/es/icons/SyncOutlined";
@@ -36,6 +37,7 @@ import {
   deleteApp,
   rotateKey,
   updateAppEnabled,
+  updateAppName,
   type AppDTO,
 } from "../services/api";
 
@@ -75,8 +77,9 @@ function SecretKeyDisplay({ secretKey }: { secretKey: string }) {
 export default function Apps() {
   const [apps, setApps] = useState<AppDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [editingApp, setEditingApp] = useState<AppDTO | null>(null);
   const [rotatingIds, setRotatingIds] = useState<Set<string>>(new Set());
   const [form] = Form.useForm();
   const [viewMode, setViewMode] = useState<ViewMode>(
@@ -101,18 +104,37 @@ export default function Apps() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCreate = async (values: { name: string }) => {
-    setCreateLoading(true);
+  const openCreateForm = () => {
+    setEditingApp(null);
+    form.resetFields();
+    setFormOpen(true);
+  };
+
+  const openEditForm = (app: AppDTO) => {
+    setEditingApp(app);
+    form.setFieldsValue({ name: app.name });
+    setFormOpen(true);
+  };
+
+  const handleFormSubmit = async (values: { name: string }) => {
+    setFormLoading(true);
     try {
-      await createApp(values.name);
-      message.success("App created");
-      setCreateOpen(false);
+      if (editingApp) {
+        const updated = await updateAppName(editingApp.id, values.name);
+        setApps((prev) => prev.map((a) => (a.id === editingApp.id ? updated : a)));
+        message.success("App updated");
+      } else {
+        await createApp(values.name);
+        message.success("App created");
+        await load();
+      }
+      setFormOpen(false);
+      setEditingApp(null);
       form.resetFields();
-      await load();
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "Create failed");
+      message.error(err instanceof Error ? err.message : "Operation failed");
     } finally {
-      setCreateLoading(false);
+      setFormLoading(false);
     }
   };
 
@@ -193,9 +215,15 @@ export default function Apps() {
     {
       title: "",
       key: "actions",
-      width: 180,
+      width: 220,
       render: (_: unknown, app: AppDTO) => (
         <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => openEditForm(app)}
+          />
           <Button
             icon={app.secretKey ? <SyncOutlined /> : <KeyOutlined />}
             size="small"
@@ -232,7 +260,7 @@ export default function Apps() {
               { value: "list", icon: <UnorderedListOutlined /> },
             ]}
           />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateForm}>
             New App
           </Button>
         </Space>
@@ -244,7 +272,7 @@ export default function Apps() {
         </div>
       ) : apps.length === 0 ? (
         <Empty description="No apps yet">
-          <Button type="primary" onClick={() => setCreateOpen(true)}>
+          <Button type="primary" onClick={openCreateForm}>
             Create your first app
           </Button>
         </Empty>
@@ -277,6 +305,14 @@ export default function Apps() {
                     >
                       {app.enabled ? "Enabled" : "Disabled"}
                     </Tag>
+                    <Tooltip title="Edit name">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => openEditForm(app)}
+                      />
+                    </Tooltip>
                   </Space>
                 </div>
 
@@ -332,13 +368,17 @@ export default function Apps() {
       )}
 
       <Modal
-        title="New App"
-        open={createOpen}
-        onCancel={() => setCreateOpen(false)}
+        title={editingApp ? "Edit App" : "New App"}
+        open={formOpen}
+        onCancel={() => {
+          setFormOpen(false);
+          setEditingApp(null);
+          form.resetFields();
+        }}
         onOk={() => form.submit()}
-        confirmLoading={createLoading}
+        confirmLoading={formLoading}
       >
-        <Form form={form} layout="vertical" onFinish={handleCreate} style={{ marginTop: 16 }}>
+        <Form form={form} layout="vertical" onFinish={handleFormSubmit} style={{ marginTop: 16 }}>
           <Form.Item
             name="name"
             label="App Name"

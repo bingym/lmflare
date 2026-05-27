@@ -285,6 +285,18 @@ export async function updateAppEnabled(
   return (r.meta.changes ?? 0) > 0;
 }
 
+export async function updateAppName(
+  db: D1Database,
+  id: string,
+  name: string
+): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE apps SET name = ? WHERE id = ?")
+    .bind(name, id)
+    .run();
+  return (r.meta.changes ?? 0) > 0;
+}
+
 export async function deleteApp(
   db: D1Database,
   id: string

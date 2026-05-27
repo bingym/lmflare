@@ -16,6 +16,7 @@ import {
   createApp,
   updateAppKey,
   updateAppEnabled,
+  updateAppName,
   deleteApp,
   queryUsage,
 } from "../services/db";
@@ -163,13 +164,22 @@ admin.post("/apps", async (c) => {
 
 admin.patch("/apps/:id", async (c) => {
   const id = c.req.param("id");
-  const body = await c.req.json<{ enabled?: boolean }>();
-  if (typeof body.enabled !== "boolean") {
-    return c.json({ error: "enabled (boolean) is required" }, 400);
+  const body = await c.req.json<{ enabled?: boolean; name?: string }>();
+  if (body.enabled === undefined && body.name === undefined) {
+    return c.json({ error: "At least one of enabled or name is required" }, 400);
   }
-  const ok = await updateAppEnabled(c.env.DB, id, body.enabled);
-  if (!ok) return c.json({ error: "App not found" }, 404);
+  if (typeof body.name === "string") {
+    const name = body.name.trim();
+    if (!name) return c.json({ error: "name must be non-empty" }, 400);
+    const ok = await updateAppName(c.env.DB, id, name);
+    if (!ok) return c.json({ error: "App not found" }, 404);
+  }
+  if (typeof body.enabled === "boolean") {
+    const ok = await updateAppEnabled(c.env.DB, id, body.enabled);
+    if (!ok) return c.json({ error: "App not found" }, 404);
+  }
   const updated = await getApp(c.env.DB, id);
+  if (!updated) return c.json({ error: "App not found" }, 404);
   return c.json(updated);
 });
 

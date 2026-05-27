@@ -155,6 +155,13 @@ export async function updateAppEnabled(id: string, enabled: boolean): Promise<Ap
   });
 }
 
+export async function updateAppName(id: string, name: string): Promise<AppDTO> {
+  return request(`/apps/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
 export async function deleteApp(id: string): Promise<void> {
   await request(`/apps/${id}`, { method: "DELETE" });
 }
